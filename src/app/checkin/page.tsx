@@ -30,7 +30,7 @@ export default function MobileCheckIn() {
     
     // Check if the guest already exists locally by name and major
     const existingIndex = existingGuests.findIndex(
-      g => g.name.toLowerCase() === formData.name.toLowerCase() && g.major === formData.major
+      g => String(g.name || '').toLowerCase() === formData.name.toLowerCase() && g.major === formData.major
     );
 
     let response;
@@ -50,7 +50,7 @@ export default function MobileCheckIn() {
         // Fetch fresh guests to find the row number of the newly registered guest
         const freshGuests = await syncGuestsFromSheet(undefined);
         // Find the last matching guest (in case of duplicates)
-        const newlyAdded = [...freshGuests].reverse().find(g => g.name.toLowerCase() === formData.name.toLowerCase() && g.major === formData.major);
+        const newlyAdded = [...freshGuests].reverse().find(g => String(g.name || '').toLowerCase() === formData.name.toLowerCase() && g.major === formData.major);
         
         if (newlyAdded) {
           newGuest.id = newlyAdded.id;

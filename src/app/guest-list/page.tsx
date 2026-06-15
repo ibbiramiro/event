@@ -39,7 +39,7 @@ export default function GuestListPage() {
         setTotalCheckedIn(newCheckedInCount);
 
         if (parsed.length > lastGuestCount || newCheckedInCount > lastCheckedInCount) {
-          const newGuest = parsed[0];
+          const newGuest = parsed[parsed.length - 1];
           const toastId = Date.now();
           setToasts((prev) => [...prev, { id: toastId, name: newGuest.name, major: newGuest.major }]);
           setTimeout(() => {

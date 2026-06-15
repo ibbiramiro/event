@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
               <thead>
                 <tr>
                   <th>STUDENT NAME</th>
-                  <th>STUDENT ID (NIM)</th>
+                  <th>PAYMENT STATUS</th>
                   <th>MAJOR</th>
                   <th>STATUS</th>
                 </tr>
@@ -342,7 +342,14 @@ export default function AnalyticsPage() {
                           {row.name}
                         </div>
                       </td>
-                      <td>Row {row.id}</td>
+                      <td>
+                        <span style={{ 
+                          color: (row.paymentStatus?.toLowerCase() === 'paid' || row.paymentStatus?.toLowerCase() === 'lunas') ? '#10b981' : '#f59e0b',
+                          fontWeight: 500
+                        }}>
+                          {row.paymentStatus || 'Unpaid'}
+                        </span>
+                      </td>
                       <td>
                         <span className={`${styles.pill} ${pillClass}`}>{row.major}</span>
                       </td>
