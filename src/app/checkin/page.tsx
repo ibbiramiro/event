@@ -9,6 +9,14 @@ export default function MobileCheckIn() {
   const [formData, setFormData] = useState({ name: '', contact: '', major: '' });
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [checkinDisabled, setCheckinDisabled] = useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => setCheckinDisabled(data.checkinDisabled))
+      .catch(console.error);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +88,10 @@ export default function MobileCheckIn() {
 
     localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
     
+    // Set toast notification data for the Guest List
+    const toastData = { id: Date.now(), name: newGuest.name, major: newGuest.major };
+    localStorage.setItem('unievent_new_toast', JSON.stringify(toastData));
+    
     // Dispatch event to update other tabs immediately
     window.dispatchEvent(new Event('storage'));
 
@@ -103,6 +115,24 @@ export default function MobileCheckIn() {
               Program: {formData.major}
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (checkinDisabled) {
+    return (
+      <div className={styles.mobileContainer}>
+        <div className={styles.content} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
+          <div className={styles.qrIconBox} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h1 className={styles.headerTitle} style={{ marginTop: '24px' }}>Host sedang mematikan checkin</h1>
+          <p className={styles.headerSubtitle}>Silakan hubungi panitia atau tunggu beberapa saat.</p>
         </div>
       </div>
     );

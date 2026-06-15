@@ -47,6 +47,7 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       const nominal = row[5] || ''; // Column F is nominal
       const attendance = row[6] || ''; // Column G is Checked-in
       const verifiedBy = row[7] || ''; // Column H is Diproses Oleh
+      const jamHadir = row[8] || ''; // Column I is Jam Hadir
 
       // Determine method from attendance status
       let method: 'Self Check-in' | 'Manual Input' | 'Spreadsheet' = 'Spreadsheet' as any;
@@ -59,7 +60,7 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       guests.push({
         id: sheetRowNumber.toString(), // Using row number as ID is very useful for updating!
         name: name,
-        time: attendance === 'Checked-in' ? 'Checked In' : '', // We don't have exact time unless added to sheet
+        time: jamHadir ? jamHadir : (attendance === 'Checked-in' ? 'Checked In' : ''),
         major: major,
         method: attendance === 'Checked-in' ? 'Self Check-in' : 'Spreadsheet' as any,
         paymentStatus,

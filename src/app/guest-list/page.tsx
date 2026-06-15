@@ -12,6 +12,7 @@ export default function GuestListPage() {
   const [qrUrl, setQrUrl] = useState('');
   const [toasts, setToasts] = useState<{ id: number; name: string; major: string }[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [checkinDisabled, setCheckinDisabled] = useState(false);
 
   useEffect(() => {
     let lastGuestCount = 0;
@@ -32,30 +33,108 @@ export default function GuestListPage() {
     }
 
     const handleStorageChange = (e: StorageEvent) => {
+      // ... same logic
       if (e.key === 'unievent_guests' && e.newValue) {
         const parsed = JSON.parse(e.newValue) as Guest[];
         setGuests(parsed);
         const newCheckedInCount = parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length;
         setTotalCheckedIn(newCheckedInCount);
 
-        if (parsed.length > lastGuestCount || newCheckedInCount > lastCheckedInCount) {
-          const newGuest = parsed[parsed.length - 1];
-          const toastId = Date.now();
-          setToasts((prev) => [...prev, { id: toastId, name: newGuest.name, major: newGuest.major }]);
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== toastId));
-          }, 2000);
-        }
         lastGuestCount = parsed.length;
         lastCheckedInCount = newCheckedInCount;
+      }
+      
+      if (e.key === 'unievent_new_toast' && e.newValue) {
+        try {
+          const newToast = JSON.parse(e.newValue);
+          setToasts((prev) => [...prev, newToast]);
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => t.id !== newToast.id));
+          }, 4000); // Hide after 4 seconds
+        } catch (err) {}
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
+    
+    // Fetch global checkin status
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => setCheckinDisabled(data.checkinDisabled))
+      .catch(console.error);
+
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const checkedInGuests = guests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').reverse();
+  const checkedInGuests = guests
+    .filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''))
+    .sort((a, b) => {
+      const parseTime = (t: string) => {
+        if (!t || t === 'Checked In') return 0;
+        
+        // Google Sheets sometimes sends time as a Date string like "1899-12-30T09:56:17.000Z"
+        if (t.includes('T')) {
+          const timePart = t.split('T')[1].split('.')[0]; // "09:56:17"
+          const parts = timePart.split(':');
+          if (parts.length >= 2) {
+             // Add a massive offset so it's always strictly positive and > 0
+             return 1000000 + parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
+          }
+        }
+
+        // Try parsing HH:MM:SS AM/PM string directly (from toLocaleTimeString)
+        let isPM = t.toLowerCase().includes('pm');
+        let isAM = t.toLowerCase().includes('am');
+        let cleanTime = t.replace(/am|pm/i, '').trim();
+        const parts = cleanTime.split(':');
+        if (parts.length >= 2) {
+          let hours = parseInt(parts[0]);
+          if (isPM && hours < 12) hours += 12;
+          if (isAM && hours === 12) hours = 0;
+          return 1000000 + hours * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
+        }
+        
+        // Fallback Date parsing
+        const d = new Date(t);
+        if (!isNaN(d.getTime())) {
+           return 1000000 + d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds();
+        }
+        
+        return 0;
+      };
+      
+      const valA = parseTime(a.time);
+      const valB = parseTime(b.time);
+      
+      if (valA !== valB) return valB - valA; // Descending (latest time first)
+      
+      // Fallback to row ID (newest row first)
+      return Number(b.id) - Number(a.id);
+    });
+
+  const handleToggleCheckin = async () => {
+    const isDisabling = !checkinDisabled;
+    const msg = isDisabling 
+      ? "Apakah Anda yakin ingin mematikan fitur Check-in? Guest tidak akan bisa mengakses form check-in." 
+      : "Apakah Anda yakin ingin menyalakan kembali fitur Check-in?";
+    if (!window.confirm(msg)) return;
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkinDisabled: isDisabling })
+      });
+      if (res.ok) {
+        setCheckinDisabled(isDisabling);
+      } else {
+        alert("Gagal mengubah status checkin.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengubah status checkin.");
+    }
+  };
 
   return (
     <div className={`${styles.layout} ${isSidebarOpen ? '' : styles.sidebarClosed}`}>
@@ -116,14 +195,34 @@ export default function GuestListPage() {
                 )}
               </div>
 
-              <a href="/checkin" className={styles.openFormBtn}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-                Open Form
-              </a>
+              <button 
+                onClick={handleToggleCheckin}
+                className={styles.openFormBtn}
+                style={{ 
+                  backgroundColor: checkinDisabled ? '#10b981' : '#ef4444', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  width: '100%' 
+                }}
+              >
+                {checkinDisabled ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Enable Check-in
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Disable Check-in
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Right Column - Real-time Arrivals Table */}
