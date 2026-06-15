@@ -33,8 +33,9 @@ export default function MobileCheckIn() {
       method: 'Self Check-in',
     };
 
-    // Load existing guests from localStorage
-    const existingGuests: Guest[] = JSON.parse(localStorage.getItem('unievent_guests') || '[]');
+    // Fetch fresh guests from the server to check if they already exist
+    const { syncGuestsFromSheet, checkInGuestToSheet, registerGuestToSheet } = await import('@/lib/googleSheets');
+    const existingGuests = await syncGuestsFromSheet(undefined);
     
     // Check if the guest already exists locally by name and major
     const existingIndex = existingGuests.findIndex(
@@ -45,11 +46,9 @@ export default function MobileCheckIn() {
     try {
       if (existingIndex !== -1) {
         // Guest exists, check them in
-        const { checkInGuestToSheet } = await import('@/lib/googleSheets');
         response = await checkInGuestToSheet(existingGuests[existingIndex].id, undefined);
       } else {
         // Guest does not exist, register new
-        const { registerGuestToSheet, checkInGuestToSheet, syncGuestsFromSheet } = await import('@/lib/googleSheets');
         await registerGuestToSheet(formData, undefined);
         
         // Wait 1.5 seconds to ensure Google Sheets has fully committed the new row
