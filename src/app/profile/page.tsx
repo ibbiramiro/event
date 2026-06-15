@@ -63,7 +63,7 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async () => {
     setIsSavingName(true);
-    setResetMessage('');
+    setResetMessage({ type: '', text: '' });
     try {
       const response = await fetch('/api/profile/update', {
         method: 'POST',
@@ -75,10 +75,10 @@ export default function ProfilePage() {
       // Update cookie
       document.cookie = `unievent_full_name=${encodeURIComponent(fullName)}; path=/; max-age=${60 * 60 * 24 * 7}`;
       
-      setResetMessage('Profile saved successfully!');
+      setResetMessage({ type: 'success', text: 'Profile saved successfully!' });
     } catch (error) {
       console.error(error);
-      setResetMessage('Failed to save profile.');
+      setResetMessage({ type: 'error', text: 'Failed to save profile.' });
     } finally {
       setIsSavingName(false);
     }
