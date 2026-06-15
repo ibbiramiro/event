@@ -173,8 +173,9 @@ export default function CrmPage() {
               </div>
             </div>
 
-            <table className={styles.table}>
-              <thead>
+            <div className={styles.tableResponsive}>
+              <table className={styles.table}>
+                <thead>
                 <tr>
                   <th>STUDENT NAME</th>
                   <th>MAJOR</th>
@@ -260,6 +261,7 @@ export default function CrmPage() {
                 )}
               </tbody>
             </table>
+            </div>
 
             {totalPages > 1 && (
               <div className={styles.pagination}>

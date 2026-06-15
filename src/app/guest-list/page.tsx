@@ -293,16 +293,17 @@ export default function GuestListPage() {
 
             {/* Right Column - Real-time Arrivals Table */}
             <div className={styles.card}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>STUDENT NAME</th>
-                    <th>MAJOR INT.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {checkedInGuests.length > 0 ? checkedInGuests.map((row) => {
-                    const safeName = String(row.name || '');
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>STUDENT NAME</th>
+                      <th>MAJOR INT.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkedInGuests.length > 0 ? checkedInGuests.map((row) => {
+                      const safeName = String(row.name || '');
                     const initials = safeName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
                     let majorTagClass = styles.tagUndecided;
                     if (row.major === 'Computer Science') majorTagClass = styles.tagCS;
@@ -342,8 +343,9 @@ export default function GuestListPage() {
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </main>

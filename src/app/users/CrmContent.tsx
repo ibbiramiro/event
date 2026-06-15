@@ -133,8 +133,9 @@ export default function CrmContent({ initialStaffData }: { initialStaffData: any
               </div>
             </div>
 
-            <table className={styles.table}>
-              <thead>
+            <div className={styles.tableResponsive}>
+              <table className={styles.table}>
+                <thead>
                 <tr>
                   <th>USER EMAIL</th>
                   <th>ASSIGNED ROLE</th>
@@ -177,6 +178,7 @@ export default function CrmContent({ initialStaffData }: { initialStaffData: any
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
 
         </main>

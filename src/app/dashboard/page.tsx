@@ -343,116 +343,117 @@ export default function DashboardPage() {
                 </div>
               )}
               
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>STUDENT NAME</th>
-                    <th>MAJOR INT.</th>
-                    <th>METHOD</th>
-                    <th style={{ textAlign: 'right' }}>CHECK-IN</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {guests.length > 0 ? (showAll ? [...guests].reverse() : [...guests].reverse().slice(0, 5)).map((row) => {
-                    const safeName = String(row.name || '');
-                    const initials = safeName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
-                    let majorTagClass = styles.tagUndecided;
-                    if (row.major === 'Computer Science') majorTagClass = styles.tagCS;
-                    else if (row.major === 'Information Systems') majorTagClass = styles.tagIS;
-                    else if (row.major === 'Visual Communication Design') majorTagClass = styles.tagDKV;
-                    else if (row.major === 'Digital Business') majorTagClass = styles.tagDB;
-                    else if (row.major === 'International Trade') majorTagClass = styles.tagIT;
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>STUDENT NAME</th>
+                      <th>MAJOR INT.</th>
+                      <th>METHOD</th>
+                      <th style={{ textAlign: 'right' }}>CHECK-IN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guests.length > 0 ? (showAll ? [...guests].reverse() : [...guests].reverse().slice(0, 5)).map((row) => {
+                      const safeName = String(row.name || '');
+                      const initials = safeName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
+                      let majorTagClass = styles.tagUndecided;
+                      if (row.major === 'Computer Science') majorTagClass = styles.tagCS;
+                      else if (row.major === 'Information Systems') majorTagClass = styles.tagIS;
+                      else if (row.major === 'Visual Communication Design') majorTagClass = styles.tagDKV;
+                      else if (row.major === 'Digital Business') majorTagClass = styles.tagDB;
+                      else if (row.major === 'International Trade') majorTagClass = styles.tagIT;
 
-                    let avatarClass = styles.bgLightGray;
-                    if (row.major === 'Computer Science') avatarClass = styles.bgBlue;
-                    else if (row.major === 'Information Systems') avatarClass = styles.bgOrange;
-                    else if (row.major === 'Visual Communication Design') avatarClass = styles.bgLightPurple;
-                    else if (row.major === 'Digital Business') avatarClass = styles.bgGreen;
-                    else if (row.major === 'International Trade') avatarClass = styles.bgPink;
+                      let avatarClass = styles.bgLightGray;
+                      if (row.major === 'Computer Science') avatarClass = styles.bgBlue;
+                      else if (row.major === 'Information Systems') avatarClass = styles.bgOrange;
+                      else if (row.major === 'Visual Communication Design') avatarClass = styles.bgLightPurple;
+                      else if (row.major === 'Digital Business') avatarClass = styles.bgGreen;
+                      else if (row.major === 'International Trade') avatarClass = styles.bgPink;
 
-                    return (
-                      <tr key={row.id}>
-                        <td>
-                          <div className={styles.studentCell}>
-                            <div className={`${styles.avatar} ${avatarClass}`}>
-                              {initials}
+                      return (
+                        <tr key={row.id}>
+                          <td>
+                            <div className={styles.studentCell}>
+                              <div className={`${styles.avatar} ${avatarClass}`}>
+                                {initials}
+                              </div>
+                              <div className={styles.studentInfo}>
+                                <span className={styles.studentName}>{row.name}</span>
+                              </div>
                             </div>
-                            <div className={styles.studentInfo}>
-                              <span className={styles.studentName}>{row.name}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`${styles.tag} ${majorTagClass}`}>{row.major}</span>
-                        </td>
-                        <td className={styles.parentName}>{row.method}</td>
-                        <td className={styles.timeText} style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {row.time ? (
-                              <span className={styles.timeText}>
-                                {row.time.includes('T') ? row.time.split('T')[1].split('.')[0] : row.time}
-                              </span>
-                            ) : (
-                              role?.toLowerCase() !== 'kaprodi' && (
-                                <button 
-                                  className={styles.actionBtn}
+                          </td>
+                          <td>
+                            <span className={`${styles.tag} ${majorTagClass}`}>{row.major}</span>
+                          </td>
+                          <td className={styles.parentName}>{row.method}</td>
+                          <td className={styles.timeText} style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {row.time ? (
+                                <span className={styles.timeText}>
+                                  {row.time.includes('T') ? row.time.split('T')[1].split('.')[0] : row.time}
+                                </span>
+                              ) : (
+                                role?.toLowerCase() !== 'kaprodi' && (
+                                  <button 
+                                    className={styles.actionBtn}
+                                    onClick={async () => {
+                                      try {
+                                        const { checkInGuestToSheet } = await import('@/lib/googleSheets');
+                                        await checkInGuestToSheet(row.id, webAppUrl);
+                                        // Update local state to reflect check-in
+                                        const timeStr = new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                        const updatedGuests = guests.map(g => {
+                                          if (g.id === row.id) {
+                                            return { ...g, time: timeStr, method: 'Self Check-in' };
+                                          }
+                                          return g;
+                                        });
+                                        setGuests(updatedGuests as any);
+                                        localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
+                                        
+                                        // Update checked in count
+                                        setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
+                                        
+                                        // Trigger storage event so dashboard updates
+                                        window.dispatchEvent(new Event('storage'));
+                                      } catch (e) {
+                                        console.error(e);
+                                        alert('Failed to check in');
+                                      }
+                                    }}
+                                  >
+                                    Check In
+                                  </button>
+                                )
+                              )}
+                              
+                              {role?.toLowerCase() !== 'kaprodi' && (
+                                <button
+                                  className={styles.deleteBtn}
                                   onClick={async () => {
-                                    try {
-                                      const { checkInGuestToSheet } = await import('@/lib/googleSheets');
-                                      await checkInGuestToSheet(row.id, webAppUrl);
-                                      // Update local state to reflect check-in
-                                      const timeStr = new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                                      const updatedGuests = guests.map(g => {
-                                        if (g.id === row.id) {
-                                          return { ...g, time: timeStr, method: 'Self Check-in' };
-                                        }
-                                        return g;
-                                      });
-                                      setGuests(updatedGuests as any);
-                                      localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
-                                      
-                                      // Update checked in count
-                                      setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
-                                      
-                                      // Trigger storage event so dashboard updates
-                                      window.dispatchEvent(new Event('storage'));
-                                    } catch (e) {
-                                      console.error(e);
-                                      alert('Failed to check in');
+                                    if (confirm(`Are you sure you want to delete ${row.name}? This will remove the guest from the list and spreadsheet.`)) {
+                                      try {
+                                        const { removeGuestFromSheet } = await import('@/lib/googleSheets');
+                                        await removeGuestFromSheet(row.id, webAppUrl);
+                                        const updatedGuests = guests.filter(g => g.id !== row.id);
+                                        setGuests(updatedGuests as any);
+                                        localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
+                                        setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
+                                        window.dispatchEvent(new Event('storage'));
+                                      } catch (e) {
+                                        console.error(e);
+                                        alert('Failed to remove guest');
+                                      }
                                     }
                                   }}
+                                  title="Remove Guest"
                                 >
-                                  Check In
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                  </svg>
                                 </button>
-                              )
-                            )}
-                            
-                            {role?.toLowerCase() !== 'kaprodi' && (
-                              <button
-                                className={styles.deleteBtn}
-                                onClick={async () => {
-                                  if (confirm(`Are you sure you want to delete ${row.name}? This will remove the guest from the list and spreadsheet.`)) {
-                                    try {
-                                      const { removeGuestFromSheet } = await import('@/lib/googleSheets');
-                                      await removeGuestFromSheet(row.id, webAppUrl);
-                                      const updatedGuests = guests.filter(g => g.id !== row.id);
-                                      setGuests(updatedGuests as any);
-                                      localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
-                                      setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
-                                      window.dispatchEvent(new Event('storage'));
-                                    } catch (e) {
-                                      console.error(e);
-                                      alert('Failed to remove guest');
-                                    }
-                                  }
-                                }}
-                                title="Remove Guest"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6"></polyline>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                              </button>
                             )}
                           </div>
                         </td>
@@ -467,6 +468,7 @@ export default function DashboardPage() {
                   )}
                 </tbody>
               </table>
+            </div>
               
               {guests.length > 5 && (
                 <button 
