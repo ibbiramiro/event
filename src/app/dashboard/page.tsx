@@ -379,7 +379,9 @@ export default function DashboardPage() {
                         <td className={styles.timeText} style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                             {row.time ? (
-                              <span>{row.time}</span>
+                              <span className={styles.timeText}>
+                                {row.time.includes('T') ? row.time.split('T')[1].split('.')[0] : row.time}
+                              </span>
                             ) : (
                               role?.toLowerCase() !== 'kaprodi' && (
                                 <button 
