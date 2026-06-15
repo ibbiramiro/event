@@ -50,8 +50,10 @@ export default function AnalyticsPage() {
   const filteredGuests = guests.filter(g => {
     // Search
     const searchLower = searchQuery.toLowerCase();
-    const nameMatch = g.name.toLowerCase().includes(searchLower);
-    const idMatch = g.id.toLowerCase().includes(searchLower);
+    const safeName = String(g.name || '');
+    const safeId = String(g.id || '');
+    const nameMatch = safeName.toLowerCase().includes(searchLower);
+    const idMatch = safeId.toLowerCase().includes(searchLower);
     if (searchQuery && !nameMatch && !idMatch) return false;
 
     // Major
@@ -327,7 +329,8 @@ export default function AnalyticsPage() {
                     majorText = 'DKV';
                   }
 
-                  const initials = row.name.substring(0, 2).toUpperCase();
+                  const safeRowName = String(row.name || '');
+                  const initials = safeRowName.substring(0, 2).toUpperCase();
 
                   return (
                     <tr key={row.id}>

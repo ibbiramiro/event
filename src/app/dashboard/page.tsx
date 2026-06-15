@@ -343,8 +343,9 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(showAll ? guests : guests.slice(0, 5)).length > 0 ? (showAll ? guests : guests.slice(0, 5)).map((row) => {
-                    const initials = row.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                  {guests.length > 0 ? (showAll ? [...guests].reverse() : [...guests].reverse().slice(0, 5)).map((row) => {
+                    const safeName = String(row.name || '');
+                    const initials = safeName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
                     let majorTagClass = styles.tagUndecided;
                     if (row.major === 'Computer Science') majorTagClass = styles.tagCS;
                     else if (row.major === 'Information Systems') majorTagClass = styles.tagIS;

@@ -21,7 +21,7 @@ export default function MobileCheckIn() {
       id: Date.now().toString(),
       name: formData.name,
       time: new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      major: formData.major as 'CS' | 'IS' | 'DKV',
+      major: formData.major,
       method: 'Self Check-in',
     };
 
@@ -41,10 +41,21 @@ export default function MobileCheckIn() {
         response = await checkInGuestToSheet(existingGuests[existingIndex].id, undefined);
       } else {
         // Guest does not exist, register new
-        const { registerGuestToSheet } = await import('@/lib/googleSheets');
-        response = await registerGuestToSheet(formData, undefined);
-        if (response && response.newRowNumber) {
-          newGuest.id = response.newRowNumber.toString();
+        const { registerGuestToSheet, checkInGuestToSheet, syncGuestsFromSheet } = await import('@/lib/googleSheets');
+        await registerGuestToSheet(formData, undefined);
+        
+        // Wait 1.5 seconds to ensure Google Sheets has fully committed the new row
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Fetch fresh guests to find the row number of the newly registered guest
+        const freshGuests = await syncGuestsFromSheet(undefined);
+        // Find the last matching guest (in case of duplicates)
+        const newlyAdded = [...freshGuests].reverse().find(g => g.name.toLowerCase() === formData.name.toLowerCase() && g.major === formData.major);
+        
+        if (newlyAdded) {
+          newGuest.id = newlyAdded.id;
+          // Immediately check them in since this is the Check-In page!
+          await checkInGuestToSheet(newGuest.id, undefined);
         }
       }
     } catch (error) {

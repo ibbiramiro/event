@@ -59,7 +59,8 @@ export default function CrmPage() {
 
   const filteredGuests = guests.filter(g => {
     const searchLower = searchQuery.toLowerCase();
-    const nameMatch = g.name.toLowerCase().includes(searchLower);
+    const safeName = String(g.name || '');
+    const nameMatch = safeName.toLowerCase().includes(searchLower);
     if (searchQuery && !nameMatch) return false;
 
     const isPaid = g.paymentStatus?.toLowerCase() === 'paid' || g.paymentStatus?.toLowerCase() === 'lunas';
@@ -184,7 +185,8 @@ export default function CrmPage() {
                   } else if (row.major.includes('Visual') || row.major === 'DKV') {
                     avatarBg = styles.bgOrange;
                   }
-                  const initials = row.name.substring(0, 2).toUpperCase();
+                  const safeRowName = String(row.name || '');
+                  const initials = safeRowName.substring(0, 2).toUpperCase();
 
                   return (
                     <tr key={row.id}>
