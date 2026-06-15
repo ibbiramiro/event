@@ -5,26 +5,33 @@ import styles from './guestList.module.css';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import TopNav from '@/components/TopNav/TopNav';
 import { Guest } from '@/lib/data';
+import { syncGuestsFromSheet } from '@/lib/googleSheets';
 
 export default function GuestListPage() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [totalCheckedIn, setTotalCheckedIn] = useState(0);
   const [qrUrl, setQrUrl] = useState('');
   const [toasts, setToasts] = useState<{ id: number; name: string; major: string }[]>([]);
+  const [pendingToasts, setPendingToasts] = useState<{ id: number; name: string; major: string }[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [checkinDisabled, setCheckinDisabled] = useState(false);
+  
+  const animatedIdsRef = React.useRef<Set<string>>(new Set());
+  const isInitialLoad = React.useRef(true);
 
   useEffect(() => {
-    let lastGuestCount = 0;
-    let lastCheckedInCount = 0;
-    // Load initial count
+    // 1. Initial Local Storage Load (for instant display before API finishes)
     const storedGuests = localStorage.getItem('unievent_guests');
     if (storedGuests) {
-      const parsed = JSON.parse(storedGuests) as Guest[];
-      setGuests(parsed);
-      lastGuestCount = parsed.length;
-      lastCheckedInCount = parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length;
-      setTotalCheckedIn(lastCheckedInCount);
+      try {
+        const parsed = JSON.parse(storedGuests) as Guest[];
+        setGuests(parsed);
+        const checkedIn = parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''));
+        setTotalCheckedIn(checkedIn.length);
+        
+        // Add all existing checked-in guests to animatedIds so they don't animate on refresh
+        checkedIn.forEach(g => animatedIdsRef.current.add(g.id));
+      } catch (e) {}
     }
 
     if (typeof window !== 'undefined') {
@@ -32,39 +39,89 @@ export default function GuestListPage() {
       setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`);
     }
 
-    const handleStorageChange = (e: StorageEvent) => {
-      // ... same logic
-      if (e.key === 'unievent_guests' && e.newValue) {
-        const parsed = JSON.parse(e.newValue) as Guest[];
-        setGuests(parsed);
-        const newCheckedInCount = parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length;
-        setTotalCheckedIn(newCheckedInCount);
-
-        lastGuestCount = parsed.length;
-        lastCheckedInCount = newCheckedInCount;
-      }
-      
-      if (e.key === 'unievent_new_toast' && e.newValue) {
-        try {
-          const newToast = JSON.parse(e.newValue);
-          setToasts((prev) => [...prev, newToast]);
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== newToast.id));
-          }, 4000); // Hide after 4 seconds
-        } catch (err) {}
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Fetch global checkin status
+    // 2. Fetch global checkin status once
     fetch('/api/settings')
       .then(r => r.json())
       .then(data => setCheckinDisabled(data.checkinDisabled))
       .catch(console.error);
 
-    return () => window.removeEventListener('storage', handleStorageChange);
+    // 3. Auto-Polling System (Every 5 seconds)
+    const fetchGuests = async () => {
+      try {
+        const freshGuests = await syncGuestsFromSheet();
+        if (!freshGuests || freshGuests.length === 0) return;
+        
+        setGuests(freshGuests);
+        const newlyCheckedIn = freshGuests.filter(g => {
+          const isCheckedIn = g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== '');
+          const isNew = !animatedIdsRef.current.has(g.id);
+          return isCheckedIn && isNew;
+        });
+
+        const newTotal = freshGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== '')).length;
+        setTotalCheckedIn(newTotal);
+
+        if (isInitialLoad.current) {
+          // On first API fetch, mark all as animated to prevent ghost toasts
+          newlyCheckedIn.forEach(g => animatedIdsRef.current.add(g.id));
+          isInitialLoad.current = false;
+        } else if (newlyCheckedIn.length > 0) {
+          // Put new check-ins into the FIFO animation queue!
+          newlyCheckedIn.forEach(g => animatedIdsRef.current.add(g.id));
+          
+          // Sort chronologically by ID so queue runs in order
+          newlyCheckedIn.sort((a, b) => Number(a.id) - Number(b.id));
+          
+          const newToastData = newlyCheckedIn.map(g => ({ id: Date.now() + Number(g.id), name: g.name, major: g.major }));
+          setPendingToasts(prev => [...prev, ...newToastData]);
+        }
+        
+        // Save to local storage for caching
+        localStorage.setItem('unievent_guests', JSON.stringify(freshGuests));
+      } catch (err) {
+        console.error('Polling error', err);
+      }
+    };
+
+    fetchGuests(); // Run immediately
+    const intervalId = setInterval(fetchGuests, 5000); // Poll every 5s
+
+    // Listen for local tab checkins (if admin checks someone in on the same browser)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'unievent_new_toast' && e.newValue) {
+        try {
+          const newToast = JSON.parse(e.newValue);
+          // Only add to queue if we haven't animated this exact checkin yet
+          if (!animatedIdsRef.current.has(`local_${newToast.id}`)) {
+            animatedIdsRef.current.add(`local_${newToast.id}`);
+            setPendingToasts(prev => [...prev, newToast]);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
+
+  // FIFO Animation Queue Processor
+  useEffect(() => {
+    if (toasts.length === 0 && pendingToasts.length > 0) {
+      const nextToast = pendingToasts[0];
+      
+      // Move from pending to active
+      setPendingToasts(prev => prev.slice(1));
+      setToasts([nextToast]);
+      
+      // Hide active toast after 4 seconds, which will trigger the next one!
+      setTimeout(() => {
+        setToasts([]);
+      }, 4000);
+    }
+  }, [toasts.length, pendingToasts]);
 
   const checkedInGuests = guests
     .filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''))
