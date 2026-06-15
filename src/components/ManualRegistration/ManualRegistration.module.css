@@ -1,0 +1,230 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.uploadBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.uploadBtn:hover {
+  background-color: var(--color-background);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cardTitle {
+  color: var(--color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.cardSubtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.cardBody {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.input, .select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus, .select:focus {
+  border-color: var(--color-primary);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+}
+
+.row .formGroup {
+  flex: 1;
+}
+
+.submitBtn {
+  width: 100%;
+  background-color: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: background-color 0.2s ease;
+  margin-top: 4px;
+}
+
+.submitBtn:hover {
+  background-color: var(--color-primary-light);
+}
+
+.supportBanner {
+  background-color: var(--color-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.supportIcon {
+  width: 48px;
+  height: 48px;
+  background-color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.supportText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.supportTitle {
+  font-weight: 600;
+  color: var(--color-primary);
+  font-size: 14px;
+}
+
+.supportDesc {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Success State Styles */
+.successContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.successIcon {
+  width: 64px;
+  height: 64px;
+  background-color: var(--color-primary);
+  color: var(--success-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.successIcon inner {
+  color: var(--success-color);
+}
+
+.successTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.successDesc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.summaryBox {
+  width: 100%;
+  background-color: var(--color-background);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.summaryTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.summaryRow:last-child {
+  margin-bottom: 0;
+}
+
+.summaryLabel {
+  color: var(--text-secondary);
+}
+
+.summaryValue {
+  font-weight: 600;
+  color: var(--text-main);
+}

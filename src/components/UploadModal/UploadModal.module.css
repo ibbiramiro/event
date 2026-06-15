@@ -1,0 +1,238 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background-color: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0b1930;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.closeBtn:hover {
+  background-color: var(--color-background);
+  color: var(--text-main);
+}
+
+.body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.infoBox {
+  background-color: #f5f8ff;
+  border: 1px solid #d1e0ff;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.infoIcon {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.infoContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infoText {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.warningText {
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.downloadLink {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0b1930;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.downloadLink:hover {
+  text-decoration: underline;
+}
+
+.uploadZone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background-color: #fafbfc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.uploadZone:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.uploadIcon {
+  width: 48px;
+  height: 48px;
+  background-color: #e0e7ff;
+  color: #0b1930;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.uploadTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.uploadSubtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btnCancel {
+  padding: 10px 24px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnCancel:hover {
+  background-color: #f8fafc;
+}
+
+.btnUpload {
+  padding: 10px 24px;
+  background-color: #0b1930;
+  border: 1px solid #0b1930;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btnUpload:hover {
+  background-color: #1a2a47;
+}
+
+/* Mobile Responsiveness (Bottom Sheet Style) */
+@media (max-width: 768px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .footer {
+    flex-direction: column-reverse;
+  }
+
+  .btnCancel, .btnUpload {
+    width: 100%;
+    padding: 14px;
+  }
+
+  .btnUpload {
+    background-color: #7e8ca3; /* The button in mobile screenshot is a lighter blue/gray, but let's stick to the theme if possible, or match the screenshot. I'll make it #7886a0 to match the mobile screenshot */
+    border-color: #7e8ca3;
+  }
+  
+  .btnUpload:hover {
+    background-color: #64748b;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,301 @@
+.topNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 72px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--color-surface);
+}
+
+/* Tabs styles */
+.tabs {
+  display: flex;
+  gap: 24px;
+  height: 100%;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 15px;
+  position: relative;
+  transition: color 0.2s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.tabTitle {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--color-primary);
+  margin-right: 16px;
+  cursor: default;
+}
+
+.tab:not(.tabTitle):hover {
+  color: var(--color-primary);
+}
+
+.tab.active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+}
+
+/* CRM Left Nav Layout */
+.crmLeftNav {
+  display: flex;
+  align-items: center;
+}
+
+.crmBrandTitle {
+  color: #0b1930;
+  margin-right: 32px;
+}
+
+.crmSearch {
+  width: 320px;
+}
+
+.crmTabs {
+  display: flex;
+  gap: 20px;
+  margin-right: 16px;
+}
+
+/* Search bar styles (Guest List / CRM) */
+.searchContainer {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 10px 10px 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background-color: #f8fafc;
+  font-size: 14px;
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+.searchInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.staffPortal {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.iconGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.iconBtn {
+  color: var(--text-main);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background-color: var(--color-background);
+}
+
+.notificationDot {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444; /* Red */
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+}
+
+/* Profile Dropdown */
+.profileContainer {
+  position: relative;
+  margin-left: 8px;
+}
+
+.profileAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #111827;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.profileAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileAvatar:hover {
+  border-color: var(--color-primary);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 200px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  z-index: 50;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dropdownItem {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-background);
+  color: var(--color-primary);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 4px 0;
+}
+
+.signOutText {
+  color: #ef4444;
+}
+
+.dropdownItem:hover .signOutText {
+  color: #dc2626;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.avatarGroup {
+  display: flex;
+  align-items: center;
+}
+
+.avatarOverlap {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  margin-right: -10px;
+  background-color: #e5e7eb;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.avatarOverlap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  padding: 8px;
+  cursor: pointer;
+  margin-right: 16px;
+}
+
+@media (max-width: 768px) {
+  .topNav {
+    padding: 0 16px;
+  }
+  .tabs, .staffPortal, .crmTabs {
+    display: none;
+  }
+  .menuBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .crmSearch, .searchContainer {
+    width: 200px;
+  }
+}
