@@ -20,6 +20,9 @@ export default function GuestListPage() {
   const isInitialLoad = React.useRef(true);
 
   useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
     // 1. Initial Local Storage Load (for instant display before API finishes)
     const storedGuests = localStorage.getItem('unievent_guests');
     if (storedGuests) {
@@ -198,6 +201,12 @@ export default function GuestListPage() {
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
         <Sidebar />
       </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
         <div style={{ padding: '20px 40px 0', display: 'flex', alignItems: 'center' }}>
           <button

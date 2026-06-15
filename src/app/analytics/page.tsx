@@ -23,6 +23,9 @@ export default function AnalyticsPage() {
   }, [searchQuery, selectedMajor, statusFilter]);
 
   useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
     const stored = localStorage.getItem('unievent_guests');
     if (stored) {
       setGuests(JSON.parse(stored));
@@ -128,6 +131,12 @@ export default function AnalyticsPage() {
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
         <Sidebar />
       </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
         <TopNav onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className={styles.contentWrapper}>

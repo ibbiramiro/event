@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './crm.module.css';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import TopNav from '@/components/TopNav/TopNav';
@@ -10,6 +10,12 @@ export default function CrmContent({ initialStaffData }: { initialStaffData: any
   const [filter, setFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
 
   const filteredStaff = initialStaffData.filter(staff => 
     staff.email.toLowerCase().includes(filter.toLowerCase()) || 
@@ -41,6 +47,12 @@ export default function CrmContent({ initialStaffData }: { initialStaffData: any
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
         <Sidebar />
       </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
         <TopNav onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className={styles.contentWrapper}>

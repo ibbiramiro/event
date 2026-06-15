@@ -15,8 +15,12 @@ export default function ProfilePage() {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
     // Extract role from cookie
     const roleCookie = document.cookie
       .split('; ')
@@ -121,10 +125,18 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className={styles.layout}>
-      <Sidebar />
+    <div className={`${styles.layout} ${isSidebarOpen ? '' : styles.sidebarClosed}`}>
+      <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
+        <Sidebar />
+      </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
-        <TopNav />
+        <TopNav onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className={styles.contentWrapper}>
           <div className={styles.pageHeader}>
             <div>

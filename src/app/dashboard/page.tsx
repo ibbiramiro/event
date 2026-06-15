@@ -28,6 +28,10 @@ export default function DashboardPage() {
   const [tempSpreadsheetUrl, setTempSpreadsheetUrl] = useState('');
 
   useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
+
     const roleCookie = document.cookie
       .split('; ')
       .find(row => row.startsWith('unievent_role='))
@@ -149,6 +153,12 @@ export default function DashboardPage() {
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
         <Sidebar />
       </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
         <div style={{ padding: '20px 40px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button

@@ -17,6 +17,9 @@ export default function CrmPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
     const storedFullName = localStorage.getItem('unievent_full_name');
     if (storedFullName) {
       setCurrentUser(storedFullName);
@@ -122,6 +125,12 @@ export default function CrmPage() {
       <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
         <Sidebar />
       </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={styles.mainContent}>
         <TopNav onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className={styles.contentWrapper}>
