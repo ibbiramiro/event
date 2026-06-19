@@ -5,10 +5,28 @@ export const revalidate = 0;
 
 const DEFAULT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwrirN7U5KKkFFkgPajn7_BOE2eKoP9fvClFgMwhZEHU7cFD-_o1w21urMuAWdY373YjQ/exec';
 
+import { createClient } from '@supabase/supabase-js';
+
+async function getWebAppUrl(customUrl: string | null) {
+  if (customUrl) return customUrl;
+  
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data, error } = await supabase.from('sysapp_config').select('value').eq('key', 'web_app_url').single();
+    if (data && data.value) return data.value;
+  } catch (err) {
+    console.error('Failed to get config from supabase', err);
+  }
+  return DEFAULT_WEB_APP_URL;
+}
+
 export async function GET(request: Request) {
   try {
     const customUrl = request.headers.get('x-web-app-url');
-    const targetUrl = customUrl || DEFAULT_WEB_APP_URL;
+    const targetUrl = await getWebAppUrl(customUrl);
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -33,7 +51,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const customUrl = request.headers.get('x-web-app-url');
-    const targetUrl = customUrl || DEFAULT_WEB_APP_URL;
+    const targetUrl = await getWebAppUrl(customUrl);
 
     const body = await request.json();
     const { action, rowNumber } = body;

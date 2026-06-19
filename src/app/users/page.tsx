@@ -1,6 +1,10 @@
 import React from 'react';
 import CrmContent from './CrmContent';
 import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function CrmPage() {
 
   let initialStaffData: any[] = [];

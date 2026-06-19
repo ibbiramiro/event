@@ -41,13 +41,15 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       // rowNumber in Google Sheets is i + 1
       const sheetRowNumber = i + 1;
       
-      const name = row[1] || '';
-      const major = row[2] || '';
-      const paymentStatus = row[3] || 'Unpaid';
-      const nominal = row[5] || ''; // Column F is nominal
-      const attendance = row[6] || ''; // Column G is Checked-in
-      const verifiedBy = row[7] || ''; // Column H is Diproses Oleh
-      const jamHadir = row[8] || ''; // Column I is Jam Hadir
+      const registrationNumber = row[1] ? row[1].toString() : '';
+      const name = row[2] || '';
+      const major = row[3] || '';
+      const paymentStatus = row[4] || 'Unpaid';
+      const contact = row[5] || ''; // Column F is Contact
+      const nominal = row[6] || ''; // Column G is nominal
+      const attendance = row[7] || ''; // Column H is Checked-in
+      const verifiedBy = row[8] || ''; // Column I is Diproses Oleh
+      const jamHadir = row[9] || ''; // Column J is Jam Hadir
 
       // Determine method from attendance status
       let method: 'Self Check-in' | 'Manual Input' | 'Spreadsheet' = 'Spreadsheet' as any;
@@ -66,12 +68,17 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
         paymentStatus,
         verifiedBy,
         nominal,
+        registrationNumber,
+        contact,
       });
     }
 
     return guests;
-  } catch (error) {
-    console.error('Error syncing guests:', error);
+  } catch (error: any) {
+    // Suppress Next.js error overlay for network interruptions during background polling
+    if (error.name !== 'TypeError' && error.message !== 'Failed to fetch') {
+      console.warn('Error syncing guests:', error);
+    }
     return [];
   }
 }
@@ -105,7 +112,7 @@ export async function checkInGuestToSheet(rowNumber: string | number, webAppUrl?
   }
 }
 
-export async function registerGuestToSheet(data: { name: string; major: string; contact: string }, webAppUrl?: string) {
+export async function registerGuestToSheet(data: { name: string; major: string; contact: string; registrationNumber?: string }, webAppUrl?: string) {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -119,11 +126,13 @@ export async function registerGuestToSheet(data: { name: string; major: string; 
       headers,
       body: JSON.stringify({
         action: 'create',
-        name: data.name,
-        major: data.major,
-        contact: data.contact,
+        // Standard payload mapping (matching the new Apps Script)
+        registrationNumber: data.registrationNumber || '-',
+        name: data.name || '-',
+        major: data.major || '-',
         status: 'Unpaid',
         paymentStatus: 'Unpaid',
+        contact: data.contact || '-',
       }),
     });
 

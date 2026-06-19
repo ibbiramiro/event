@@ -297,6 +297,7 @@ export default function GuestListPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
+                      <th>REG. NUMBER</th>
                       <th>STUDENT NAME</th>
                       <th>MAJOR INT.</th>
                     </tr>
@@ -321,6 +322,9 @@ export default function GuestListPage() {
 
                     return (
                       <tr key={row.id}>
+                        <td style={{ fontSize: '16px', padding: '20px 32px', color: '#64748b', fontWeight: '500' }}>
+                          {row.registrationNumber || '-'}
+                        </td>
                         <td style={{ fontSize: '20px', fontWeight: '600', padding: '20px 32px' }}>
                           <div className={styles.studentCell}>
                             <div className={`${styles.avatar} ${avatarClass}`} style={{ width: '48px', height: '48px', fontSize: '18px' }}>
@@ -338,7 +342,7 @@ export default function GuestListPage() {
                     );
                   }) : (
                     <tr>
-                      <td colSpan={2} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                         No guests have checked in yet.
                       </td>
                     </tr>

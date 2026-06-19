@@ -11,7 +11,7 @@ export default function CrmPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'All' | 'Paid' | 'Unpaid'>('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [nominals, setNominals] = useState<Record<string, string>>({});
+  const [regNumbers, setRegNumbers] = useState<Record<string, string>>({});
   const [currentUser, setCurrentUser] = useState<string>('System');
   const [isProcessing, setIsProcessing] = useState<Record<string, boolean>>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -66,7 +66,7 @@ export default function CrmPage() {
     const nameMatch = safeName.toLowerCase().includes(searchLower);
     if (searchQuery && !nameMatch) return false;
 
-    const isPaid = g.paymentStatus?.toLowerCase() === 'paid' || g.paymentStatus?.toLowerCase() === 'lunas';
+    const isPaid = String(g.paymentStatus || '').toLowerCase() === 'paid' || String(g.paymentStatus || '').toLowerCase() === 'lunas';
     if (paymentFilter === 'Paid' && !isPaid) return false;
     if (paymentFilter === 'Unpaid' && isPaid) return false;
 
@@ -79,25 +79,23 @@ export default function CrmPage() {
   const paginatedGuests = filteredGuests.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
 
   const handleProcessPayment = async (guestId: string, name: string) => {
-    const nominal = nominals[guestId];
-    if (!nominal) {
-      alert("Please enter a nominal amount.");
+    const reg = regNumbers[guestId];
+    if (!reg) {
+      alert("Please enter a Registration Number.");
       return;
     }
 
     setIsProcessing(prev => ({ ...prev, [guestId]: true }));
     try {
-      const webAppUrl = localStorage.getItem('unievent_web_app_url') || '';
       const res = await fetch('/api/guests', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          ...(webAppUrl && { 'x-web-app-url': webAppUrl })
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           action: 'payment',
           rowNumber: Number(guestId),
-          nominal: nominal,
+          registrationNumber: reg,
           verifiedBy: currentUser
         })
       });
@@ -105,13 +103,13 @@ export default function CrmPage() {
       if (!res.ok) throw new Error("Payment failed");
       
       // Optimistic update
-      setGuests(prev => prev.map(g => g.id === guestId ? { ...g, paymentStatus: 'Paid', nominal, verifiedBy: currentUser } : g));
+      setGuests(prev => prev.map(g => g.id === guestId ? { ...g, paymentStatus: 'Paid', registrationNumber: reg, verifiedBy: currentUser } : g));
       // Update localStorage so other tabs sync
-      const updatedGuests = guests.map(g => g.id === guestId ? { ...g, paymentStatus: 'Paid', nominal, verifiedBy: currentUser } : g);
+      const updatedGuests = guests.map(g => g.id === guestId ? { ...g, paymentStatus: 'Paid', registrationNumber: reg, verifiedBy: currentUser } : g);
       localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
       window.dispatchEvent(new Event('storage'));
       
-      alert(`Payment of ${nominal} for ${name} processed successfully!`);
+      alert(`Payment for ${name} processed successfully! Registration number saved.`);
     } catch (err) {
       console.error(err);
       alert("Error processing payment. Please check your API.");
@@ -177,6 +175,7 @@ export default function CrmPage() {
               <table className={styles.table}>
                 <thead>
                 <tr>
+                  <th>REG. NUMBER</th>
                   <th>STUDENT NAME</th>
                   <th>MAJOR</th>
                   <th>PAYMENT STATUS</th>
@@ -186,7 +185,7 @@ export default function CrmPage() {
               </thead>
               <tbody>
                 {paginatedGuests.length > 0 ? paginatedGuests.map((row) => {
-                  const isPaid = row.paymentStatus?.toLowerCase() === 'paid' || row.paymentStatus?.toLowerCase() === 'lunas';
+                  const isPaid = String(row.paymentStatus || '').toLowerCase() === 'paid' || String(row.paymentStatus || '').toLowerCase() === 'lunas';
                   const dotClass = isPaid ? styles.dotGreen : styles.dotYellow;
                   
                   let avatarBg = styles.bgBlue;
@@ -200,6 +199,7 @@ export default function CrmPage() {
 
                   return (
                     <tr key={row.id}>
+                      <td style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>{row.registrationNumber || '-'}</td>
                       <td>
                         <div className={styles.studentCell}>
                           <div className={`${styles.avatar} ${avatarBg}`}>
@@ -232,10 +232,10 @@ export default function CrmPage() {
                         ) : (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <input
-                              type="number"
-                              placeholder="Nominal"
-                              value={nominals[row.id] || ''}
-                              onChange={(e) => setNominals(prev => ({ ...prev, [row.id]: e.target.value }))}
+                              type="text"
+                              placeholder="Reg Number"
+                              value={regNumbers[row.id] || ''}
+                              onChange={(e) => setRegNumbers(prev => ({ ...prev, [row.id]: e.target.value }))}
                               style={{ width: '100px', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '12px', outline: 'none' }}
                             />
                             <button

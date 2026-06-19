@@ -6,7 +6,9 @@ import { Guest } from '@/lib/data';
 import Link from 'next/link';
 
 export default function MobileCheckIn() {
-  const [formData, setFormData] = useState({ name: '', contact: '', major: '' });
+  const [formData, setFormData] = useState({ name: '', contact: '', major: '', registrationNumber: '' });
+  const [isLocked, setIsLocked] = useState(false);
+  const [guestsList, setGuestsList] = useState<Guest[]>([]);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [checkinDisabled, setCheckinDisabled] = useState(false);
@@ -16,7 +18,28 @@ export default function MobileCheckIn() {
       .then(r => r.json())
       .then(data => setCheckinDisabled(data.checkinDisabled))
       .catch(console.error);
+
+    import('@/lib/googleSheets').then(({ syncGuestsFromSheet }) => {
+      syncGuestsFromSheet().then(data => setGuestsList(data)).catch(console.error);
+    });
   }, []);
+
+  const handleRegNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, registrationNumber: val }));
+
+    if (val.trim() !== '') {
+      const found = guestsList.find(g => g.registrationNumber === val.trim());
+      if (found) {
+        setFormData(prev => ({ ...prev, name: found.name, major: found.major, contact: found.contact || '' }));
+        setIsLocked(true);
+      } else {
+        setIsLocked(false);
+      }
+    } else {
+      setIsLocked(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +50,7 @@ export default function MobileCheckIn() {
     // Build the guest object
     const newGuest: Guest = {
       id: Date.now().toString(),
+      registrationNumber: formData.registrationNumber,
       name: formData.name,
       time: new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       major: formData.major,
@@ -48,7 +72,6 @@ export default function MobileCheckIn() {
         // Guest exists, check them in
         response = await checkInGuestToSheet(existingGuests[existingIndex].id, undefined);
       } else {
-        // Guest does not exist, register new
         await registerGuestToSheet(formData, undefined);
         
         // Wait 1.5 seconds to ensure Google Sheets has fully committed the new row
@@ -156,6 +179,17 @@ export default function MobileCheckIn() {
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
+            <label className={styles.label}>Registration Number (Optional)</label>
+            <input 
+              type="text" 
+              className={styles.input} 
+              placeholder="e.g. 30123456"
+              value={formData.registrationNumber}
+              onChange={handleRegNumberChange}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
             <label className={styles.label}>Full Name</label>
             <input 
               type="text" 
@@ -164,18 +198,22 @@ export default function MobileCheckIn() {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required 
+              disabled={isLocked}
+              style={{ backgroundColor: isLocked ? '#f3f4f6' : 'transparent', color: isLocked ? '#9ca3af' : 'inherit' }}
             />
           </div>
 
           <div className={styles.formGroup}>
-            <label className={styles.label}>Email or Phone Number</label>
+            <label className={styles.label}>Contact Number (WhatsApp/Email)</label>
             <input 
               type="text" 
               className={styles.input} 
-              placeholder="alex@uni.edu or +123456789"
+              placeholder="e.g. 08123456789 or email@example.com"
               value={formData.contact}
               onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-              required
+              required 
+              disabled={isLocked}
+              style={{ backgroundColor: isLocked ? '#f3f4f6' : 'transparent', color: isLocked ? '#9ca3af' : 'inherit' }}
             />
           </div>
 
@@ -185,7 +223,8 @@ export default function MobileCheckIn() {
               
               <div 
                 className={`${styles.majorCard} ${formData.major === 'Computer Science' ? styles.active : ''}`}
-                onClick={() => setFormData({ ...formData, major: 'Computer Science' })}
+                onClick={() => !isLocked && setFormData({ ...formData, major: 'Computer Science' })}
+                style={{ opacity: isLocked && formData.major !== 'Computer Science' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
               >
                 <div className={`${styles.majorIcon} ${styles.iconCS}`}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -202,7 +241,8 @@ export default function MobileCheckIn() {
 
               <div 
                 className={`${styles.majorCard} ${formData.major === 'Information Systems' ? styles.active : ''}`}
-                onClick={() => setFormData({ ...formData, major: 'Information Systems' })}
+                onClick={() => !isLocked && setFormData({ ...formData, major: 'Information Systems' })}
+                style={{ opacity: isLocked && formData.major !== 'Information Systems' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
               >
                 <div className={`${styles.majorIcon} ${styles.iconIS}`}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -218,7 +258,8 @@ export default function MobileCheckIn() {
 
               <div 
                 className={`${styles.majorCard} ${formData.major === 'Visual Communication Design' ? styles.active : ''}`}
-                onClick={() => setFormData({ ...formData, major: 'Visual Communication Design' })}
+                onClick={() => !isLocked && setFormData({ ...formData, major: 'Visual Communication Design' })}
+                style={{ opacity: isLocked && formData.major !== 'Visual Communication Design' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
               >
                 <div className={`${styles.majorIcon} ${styles.iconDKV}`}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -237,7 +278,8 @@ export default function MobileCheckIn() {
 
               <div 
                 className={`${styles.majorCard} ${formData.major === 'Digital Business' ? styles.active : ''}`}
-                onClick={() => setFormData({ ...formData, major: 'Digital Business' })}
+                onClick={() => !isLocked && setFormData({ ...formData, major: 'Digital Business' })}
+                style={{ opacity: isLocked && formData.major !== 'Digital Business' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
               >
                 <div className={`${styles.majorIcon} ${styles.iconDB}`}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -253,7 +295,8 @@ export default function MobileCheckIn() {
 
               <div 
                 className={`${styles.majorCard} ${formData.major === 'International Trade' ? styles.active : ''}`}
-                onClick={() => setFormData({ ...formData, major: 'International Trade' })}
+                onClick={() => !isLocked && setFormData({ ...formData, major: 'International Trade' })}
+                style={{ opacity: isLocked && formData.major !== 'International Trade' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
               >
                 <div className={`${styles.majorIcon} ${styles.iconIT}`}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

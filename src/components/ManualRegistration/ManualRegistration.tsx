@@ -13,7 +13,6 @@ export default function ManualRegistration({ onAddGuest, onOpenUploadModal }: Pr
   const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
     major: 'Computer Science',
     status: 'Student',
   });
@@ -35,7 +34,7 @@ export default function ManualRegistration({ onAddGuest, onOpenUploadModal }: Pr
   };
 
   const resetForm = () => {
-    setFormData({ name: '', phone: '', major: 'Computer Science', status: 'Student' });
+    setFormData({ name: '', major: 'Computer Science', status: 'Student' });
     setIsSuccess(false);
   };
 
@@ -71,16 +70,7 @@ export default function ManualRegistration({ onAddGuest, onOpenUploadModal }: Pr
                 />
               </div>
 
-              <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
-                <label className={styles.label}>Phone Number</label>
-                <input
-                  type="tel"
-                  className={styles.input}
-                  placeholder="+62 812-3456-7890"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
+
 
               <div className={styles.row} style={{ marginBottom: '24px' }}>
                 <div className={styles.formGroup}>

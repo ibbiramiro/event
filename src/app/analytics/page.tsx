@@ -78,9 +78,8 @@ export default function AnalyticsPage() {
   const handleRefresh = async () => {
     setIsSyncing(true);
     try {
-      const webAppUrl = localStorage.getItem('unievent_web_app_url') || 'https://script.google.com/macros/s/AKfycbwrirN7U5KKkFFkgPajn7_BOE2eKoP9fvClFgMwhZEHU7cFD-_o1w21urMuAWdY373YjQ/exec';
       const { syncGuestsFromSheet } = await import('@/lib/googleSheets');
-      const sheetGuests = await syncGuestsFromSheet(webAppUrl);
+      const sheetGuests = await syncGuestsFromSheet();
       if (sheetGuests && sheetGuests.length > 0) {
         setGuests(sheetGuests);
         localStorage.setItem('unievent_guests', JSON.stringify(sheetGuests));
@@ -107,6 +106,7 @@ export default function AnalyticsPage() {
         const status = (g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== '')) ? 'Checked-in' : 'Pending';
         return {
           "Row ID": g.id,
+          "Reg. Number": g.registrationNumber || '',
           "Student Name": g.name,
           "Major": g.major,
           "Status": status,
@@ -312,6 +312,7 @@ export default function AnalyticsPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>REG. NUMBER</th>
                   <th>STUDENT NAME</th>
                   <th>PAYMENT STATUS</th>
                   <th>MAJOR</th>
@@ -343,6 +344,7 @@ export default function AnalyticsPage() {
 
                   return (
                     <tr key={row.id}>
+                      <td style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>{row.registrationNumber || '-'}</td>
                       <td>
                         <div className={styles.studentCell}>
                           <div className={`${styles.avatar} ${avatarBg}`}>

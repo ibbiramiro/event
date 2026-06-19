@@ -6,6 +6,12 @@ import Sidebar from '@/components/Sidebar/Sidebar';
 import Link from 'next/link';
 import { Guest } from '@/lib/data';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function DashboardPage() {
   const [totalCheckedIn, setTotalCheckedIn] = useState(0);
@@ -26,6 +32,10 @@ export default function DashboardPage() {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState('');
   const [tempWebAppUrl, setTempWebAppUrl] = useState('');
   const [tempSpreadsheetUrl, setTempSpreadsheetUrl] = useState('');
+  const [pmr, setPmr] = useState(false);
+  const [tempPmr, setTempPmr] = useState(false);
+  const [checkinDisable, setCheckinDisable] = useState(false);
+  const [tempCheckinDisable, setTempCheckinDisable] = useState(false);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -58,13 +68,38 @@ export default function DashboardPage() {
     const defaultWebAppUrl = 'https://script.google.com/macros/s/AKfycbwrirN7U5KKkFFkgPajn7_BOE2eKoP9fvClFgMwhZEHU7cFD-_o1w21urMuAWdY373YjQ/exec';
     const defaultSpreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1Q5Nnzi4FRMP7nuBj2XurxA2oGvWSmrz2Vfg-UfifX9vkpkvz6eWNs9jh/edit';
 
-    const savedWebAppUrl = localStorage.getItem('unievent_web_app_url') || defaultWebAppUrl;
-    const savedSpreadsheetUrl = localStorage.getItem('unievent_spreadsheet_url') || defaultSpreadsheetUrl;
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (!res.ok) throw new Error('Failed to fetch config');
+        const json = await res.json();
+        const data = json.data || [];
+        
+        if (data && data.length > 0) {
+          const webAppRow = data.find((r: any) => r.key === 'web_app_url');
+          const sheetRow = data.find((r: any) => r.key === 'spreadsheet_url');
+          const pmrRow = data.find((r: any) => r.key === 'PMR');
+          const checkinDisableRow = data.find((r: any) => r.key === 'Checkin Disable');
 
-    setWebAppUrl(savedWebAppUrl);
-    setSpreadsheetUrl(savedSpreadsheetUrl);
-    setTempWebAppUrl(savedWebAppUrl);
-    setTempSpreadsheetUrl(savedSpreadsheetUrl);
+          setWebAppUrl(webAppRow?.value || '');
+          setSpreadsheetUrl(sheetRow?.value || '');
+          setTempWebAppUrl(webAppRow?.value || '');
+          setTempSpreadsheetUrl(sheetRow?.value || '');
+          
+          const isPmr = pmrRow?.value === 'Y';
+          setPmr(isPmr);
+          setTempPmr(isPmr);
+          
+          const isCheckinDisable = checkinDisableRow?.value === 'Y';
+          setCheckinDisable(isCheckinDisable);
+          setTempCheckinDisable(isCheckinDisable);
+        }
+      } catch (err) {
+        console.error('Error fetching config from API:', err);
+      }
+    };
+    
+    fetchConfig();
 
     // Load initial count to avoid toasting on first load
     const storedGuests = localStorage.getItem('unievent_guests');
@@ -118,34 +153,44 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveSettings = () => {
-    localStorage.setItem('unievent_web_app_url', tempWebAppUrl);
-    localStorage.setItem('unievent_spreadsheet_url', tempSpreadsheetUrl);
-    setWebAppUrl(tempWebAppUrl);
-    setSpreadsheetUrl(tempSpreadsheetUrl);
-    setShowSettings(false);
-    
-    // Auto-sync data with the newly updated sheet
-    setTimeout(() => {
-      handleSyncWithUrl(tempWebAppUrl);
-    }, 100);
+  const handleSaveSettings = async () => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          web_app_url: tempWebAppUrl,
+          spreadsheet_url: tempSpreadsheetUrl,
+          'PMR': tempPmr,
+          'Checkin Disable': tempCheckinDisable
+        })
+      });
+      
+      if (!res.ok) throw new Error('Failed to save');
+      
+      setWebAppUrl(tempWebAppUrl);
+      setSpreadsheetUrl(tempSpreadsheetUrl);
+      setPmr(tempPmr);
+      setCheckinDisable(tempCheckinDisable);
+      setShowSettings(false);
+      
+      // Auto-sync data with the newly updated sheet
+      setTimeout(() => {
+        handleSyncWithUrl(tempWebAppUrl);
+      }, 100);
+    } catch (err) {
+      console.error('Error saving settings', err);
+      alert('Failed to save settings.');
+    }
   };
 
-  const handleResetSettings = () => {
-    const defaultWebAppUrl = 'https://script.google.com/macros/s/AKfycbwrirN7U5KKkFFkgPajn7_BOE2eKoP9fvClFgMwhZEHU7cFD-_o1w21urMuAWdY373YjQ/exec';
-    const defaultSpreadsheetUrl = 'https://docs.google.com/spreadsheets/d/1Q5Nnzi4FRMP7nuBj2XurxA2oGvWSmrz2Vfg-UfifX9vkpkvz6eWNs9jh/edit';
-    
-    localStorage.removeItem('unievent_web_app_url');
-    localStorage.removeItem('unievent_spreadsheet_url');
-    setWebAppUrl(defaultWebAppUrl);
-    setSpreadsheetUrl(defaultSpreadsheetUrl);
-    setTempWebAppUrl(defaultWebAppUrl);
-    setTempSpreadsheetUrl(defaultSpreadsheetUrl);
+  const handleResetSettings = async () => {
+    // Reset to defaults will now simply discard temporary changes and reload from Supabase
+    setTempWebAppUrl(webAppUrl);
+    setTempSpreadsheetUrl(spreadsheetUrl);
+    setTempPmr(pmr);
+    setTempCheckinDisable(checkinDisable);
     setShowSettings(false);
-    
-    setTimeout(() => {
-      handleSyncWithUrl(defaultWebAppUrl);
-    }, 100);
   };
 
   return (
@@ -282,6 +327,8 @@ export default function DashboardPage() {
                         onClick={() => {
                           setTempSpreadsheetUrl(spreadsheetUrl);
                           setTempWebAppUrl(webAppUrl);
+                          setTempPmr(pmr);
+                          setTempCheckinDisable(checkinDisable);
                           setShowSettings(!showSettings);
                         }}
                         title="Spreadsheet Settings"
@@ -330,12 +377,34 @@ export default function DashboardPage() {
                       />
                       <span className={styles.inputHelp}>Deployment URL dari Google Apps Script Web App (doGet / doPost).</span>
                     </div>
-                    <div className={styles.settingsActions}>
+                    <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                      <label className={styles.inputLabel} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={tempPmr}
+                          onChange={(e) => setTempPmr(e.target.checked)}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        Enable PMR
+                      </label>
+                      <label className={styles.inputLabel} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={tempCheckinDisable}
+                          onChange={(e) => setTempCheckinDisable(e.target.checked)}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        Disable Check-in
+                      </label>
+                    </div>
+                    <div className={styles.settingsActions} style={{ marginTop: '24px' }}>
                       <button className={styles.saveBtn} onClick={handleSaveSettings}>Save &amp; Sync</button>
-                      <button className={styles.resetBtn} onClick={handleResetSettings}>Reset to Defaults</button>
+                      <button className={styles.resetBtn} onClick={handleResetSettings}>Discard Changes</button>
                       <button className={styles.cancelBtn} onClick={() => {
                         setTempSpreadsheetUrl(spreadsheetUrl);
                         setTempWebAppUrl(webAppUrl);
+                        setTempPmr(pmr);
+                        setTempCheckinDisable(checkinDisable);
                         setShowSettings(false);
                       }}>Cancel</button>
                     </div>
@@ -347,6 +416,7 @@ export default function DashboardPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
+                      <th>REG. NUMBER</th>
                       <th>STUDENT NAME</th>
                       <th>MAJOR INT.</th>
                       <th>METHOD</th>
@@ -373,6 +443,7 @@ export default function DashboardPage() {
 
                       return (
                         <tr key={row.id}>
+                          <td style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>{row.registrationNumber || '-'}</td>
                           <td>
                             <div className={styles.studentCell}>
                               <div className={`${styles.avatar} ${avatarClass}`}>
@@ -397,7 +468,10 @@ export default function DashboardPage() {
                                 role?.toLowerCase() !== 'kaprodi' && (
                                   <button 
                                     className={styles.actionBtn}
+                                    disabled={checkinDisable}
+                                    style={checkinDisable ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                                     onClick={async () => {
+                                      if (checkinDisable) return;
                                       try {
                                         const { checkInGuestToSheet } = await import('@/lib/googleSheets');
                                         await checkInGuestToSheet(row.id, webAppUrl);

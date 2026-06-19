@@ -25,9 +25,8 @@ export default function Sidebar() {
     let isMounted = true;
     const intervalId = setInterval(async () => {
       try {
-        const webAppUrl = localStorage.getItem('unievent_web_app_url') || 'https://script.google.com/macros/s/AKfycbwrirN7U5KKkFFkgPajn7_BOE2eKoP9fvClFgMwhZEHU7cFD-_o1w21urMuAWdY373YjQ/exec';
         const { syncGuestsFromSheet } = await import('@/lib/googleSheets');
-        const sheetGuests = await syncGuestsFromSheet(webAppUrl);
+        const sheetGuests = await syncGuestsFromSheet();
         
         if (isMounted && sheetGuests && sheetGuests.length > 0) {
           const newGuestsStr = JSON.stringify(sheetGuests);
@@ -42,8 +41,10 @@ export default function Sidebar() {
             }));
           }
         }
-      } catch (error) {
-        console.error('Auto-sync error:', error);
+      } catch (error: any) {
+        if (error.name !== 'TypeError' && error.message !== 'Failed to fetch') {
+          console.warn('Auto-sync error:', error);
+        }
       }
     }, 10000); // 10 seconds polling
 

@@ -4,9 +4,11 @@ export interface Guest {
   time: string;
   major: string;
   method: 'Self Check-in' | 'Manual Input' | 'Spreadsheet';
+  registrationNumber?: string;
   paymentStatus?: string;
   verifiedBy?: string;
   nominal?: string;
+  contact?: string;
 }
 
 export const initialGuests: Guest[] = [
