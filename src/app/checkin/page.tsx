@@ -16,7 +16,11 @@ export default function MobileCheckIn() {
   React.useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
-      .then(data => setCheckinDisabled(data.checkinDisabled))
+      .then(json => {
+        const arr = json.data || [];
+        const row = arr.find((r: any) => r.key === 'CheckinDisabled');
+        setCheckinDisabled(row?.value === 'Y');
+      })
       .catch(console.error);
 
     import('@/lib/googleSheets').then(({ syncGuestsFromSheet }) => {

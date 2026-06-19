@@ -45,7 +45,11 @@ export default function GuestListPage() {
     // 2. Fetch global checkin status once
     fetch('/api/settings')
       .then(r => r.json())
-      .then(data => setCheckinDisabled(data.checkinDisabled))
+      .then(json => {
+        const arr = json.data || [];
+        const row = arr.find((r: any) => r.key === 'CheckinDisabled');
+        setCheckinDisabled(row?.value === 'Y');
+      })
       .catch(console.error);
 
     // 3. Auto-Polling System (Every 5 seconds)
@@ -183,7 +187,7 @@ export default function GuestListPage() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ checkinDisabled: isDisabling })
+        body: JSON.stringify({ CheckinDisabled: isDisabling })
       });
       if (res.ok) {
         setCheckinDisabled(isDisabling);

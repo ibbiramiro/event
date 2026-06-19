@@ -79,7 +79,7 @@ export default function DashboardPage() {
           const webAppRow = data.find((r: any) => r.key === 'web_app_url');
           const sheetRow = data.find((r: any) => r.key === 'spreadsheet_url');
           const pmrRow = data.find((r: any) => r.key === 'PMR');
-          const checkinDisableRow = data.find((r: any) => r.key === 'Checkin Disable');
+          const checkinDisableRow = data.find((r: any) => r.key === 'CheckinDisabled');
 
           setWebAppUrl(webAppRow?.value || '');
           setSpreadsheetUrl(sheetRow?.value || '');
@@ -162,7 +162,7 @@ export default function DashboardPage() {
           web_app_url: tempWebAppUrl,
           spreadsheet_url: tempSpreadsheetUrl,
           'PMR': tempPmr,
-          'Checkin Disable': tempCheckinDisable
+          'CheckinDisabled': tempCheckinDisable
         })
       });
       
