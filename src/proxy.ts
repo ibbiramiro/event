@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // specific route protection
-    if (pathname.startsWith('/crm') && roleData.role !== 'Super Admin') {
+    if (pathname.startsWith('/crm') && roleData.role !== 'Super Admin' && roleData.role !== 'Marketing') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
     
