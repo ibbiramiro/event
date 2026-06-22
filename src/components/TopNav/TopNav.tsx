@@ -32,7 +32,8 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
 
   useEffect(() => {
     // Enforce session timeout / unauthorized access protection
-    const hasSession = document.cookie.includes('unievent_session=');
+    // We check for 'unievent_role' instead of 'unievent_session' because 'unievent_session' is HttpOnly and invisible to JS
+    const hasSession = document.cookie.includes('unievent_role=');
     if (!hasSession && pathname !== '/login') {
       handleSignOut();
     }
