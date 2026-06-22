@@ -43,11 +43,16 @@ export default function AnalyticsPage() {
   const majorStats = uniqueMajors.map(major => {
     return {
       name: major,
-      count: checkedInGuests.filter(g => g.major === major).length
+      checkedIn: checkedInGuests.filter(g => g.major === major).length,
+      total: guests.filter(g => g.major === major).length
     };
-  }).sort((a, b) => b.count - a.count).slice(0, 5); // top 5
+  }).sort((a, b) => b.total - a.total).slice(0, 5); // top 5 by total RSVPs
 
-  const maxMajor = Math.max(1, ...majorStats.map(m => m.count));
+  const guestsForPaymentStats = selectedMajor ? guests.filter(g => g.major === selectedMajor) : guests;
+  const totalPaid = guestsForPaymentStats.filter(g => g.paymentStatus?.toLowerCase() === 'paid' || g.paymentStatus?.toLowerCase() === 'lunas').length;
+  const totalUnpaid = guestsForPaymentStats.length - totalPaid;
+
+  const maxMajor = Math.max(1, ...majorStats.map(m => m.total));
   const colorClasses = [styles.blue, styles.brown, styles.orange, styles.green, styles.purple];
 
   const filteredGuests = guests.filter(g => {
@@ -219,33 +224,71 @@ export default function AnalyticsPage() {
           </div>
 
           <div className={styles.chartCard}>
-            <div className={styles.chartHeader}>
-              <h2 className={styles.chartTitle}>Breakdown by Major</h2>
+            <div className={styles.chartHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h2 className={styles.chartTitle}>Breakdown by Major</h2>
+                <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Comparison of checked-in attendees versus total registered (RSVPs) for each major.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '14px', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>
+                  <span style={{ color: '#64748b' }}>Paid: <strong style={{ color: '#0f172a' }}>{totalPaid}</strong></span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
+                  <span style={{ color: '#64748b' }}>Unpaid: <strong style={{ color: '#0f172a' }}>{totalUnpaid}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', fontSize: '12px', color: '#64748b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#0b1930' }}></div>
+                <span>Checked-in</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#e2e8f0' }}></div>
+                <span>Pending (Total RSVP)</span>
+              </div>
             </div>
 
             {majorStats.length === 0 && (
               <div style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
-                No checked-in data available yet.
+                No data available yet.
               </div>
             )}
             
             {majorStats.map((major, index) => {
-              const width = `${(major.count / maxMajor) * 100}%`;
+              const trackWidth = `${(major.total / maxMajor) * 100}%`;
+              const fillWidth = `${(major.checkedIn / Math.max(1, major.total)) * 100}%`;
               const colorClass = colorClasses[index % colorClasses.length];
+              const percentage = major.total > 0 ? Math.round((major.checkedIn / major.total) * 100) : 0;
               
               return (
                 <div 
                   className={styles.barRow} 
                   key={index}
                   onClick={() => setSelectedMajor(selectedMajor === major.name ? null : major.name)}
-                  style={{ cursor: 'pointer', opacity: selectedMajor && selectedMajor !== major.name ? 0.3 : 1, transition: 'opacity 0.2s ease' }}
+                  style={{ cursor: 'pointer', opacity: selectedMajor && selectedMajor !== major.name ? 0.3 : 1, transition: 'opacity 0.2s ease', padding: '12px', borderRadius: '8px', backgroundColor: selectedMajor === major.name ? '#f8fafc' : 'transparent' }}
                 >
-                  <div className={styles.barHeader}>
-                    <span className={styles.barLabel}>{major.name}</span>
-                    <span className={styles.barValue}>{major.count} <span>Students</span></span>
+                  <div className={styles.barHeader} style={{ marginBottom: '10px' }}>
+                    <span className={styles.barLabel} style={{ fontSize: '15px' }}>{major.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+                        {major.checkedIn} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>Checked-in</span>
+                      </span>
+                      <span style={{ color: '#cbd5e1' }}>|</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
+                        {major.total} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>RSVPs</span>
+                      </span>
+                      <span style={{ color: '#cbd5e1' }}>|</span>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#10b981', minWidth: '40px', textAlign: 'right' }}>
+                        {percentage}%
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.barTrack}>
-                    <div className={`${styles.barFill} ${colorClass}`} style={{ width }}></div>
+                  <div className={styles.barTrack} style={{ width: trackWidth, height: '16px', backgroundColor: '#e2e8f0', borderRadius: '8px' }}>
+                    <div className={`${styles.barFill} ${colorClass}`} style={{ width: fillWidth, borderRadius: '8px' }}></div>
                   </div>
                 </div>
               );

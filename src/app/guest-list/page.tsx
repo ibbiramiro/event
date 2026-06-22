@@ -133,42 +133,53 @@ export default function GuestListPage() {
   const checkedInGuests = guests
     .filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''))
     .sort((a, b) => {
-      const parseTime = (t: string) => {
+      const parseTimeMs = (t: string) => {
         if (!t || t === 'Checked In') return 0;
         
-        // Google Sheets sometimes sends time as a Date string like "1899-12-30T09:56:17.000Z"
+        // Handle ISO Date strings (Google Sheets API sometimes sends time as 1899-12-30T09:56:17.000Z)
         if (t.includes('T')) {
-          const timePart = t.split('T')[1].split('.')[0]; // "09:56:17"
-          const parts = timePart.split(':');
-          if (parts.length >= 2) {
-             // Add a massive offset so it's always strictly positive and > 0
-             return 1000000 + parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
-          }
+          const d = new Date(t);
+          if (!isNaN(d.getTime())) return d.getTime();
         }
 
-        // Try parsing HH:MM:SS AM/PM string directly (from toLocaleTimeString)
-        let isPM = t.toLowerCase().includes('pm');
-        let isAM = t.toLowerCase().includes('am');
+        // Handle fraction of day (if Google Sheets API returns raw number for time, e.g. 0.442118)
+        const floatVal = parseFloat(t);
+        if (!isNaN(floatVal) && floatVal >= 0 && floatVal < 1) {
+            const totalSeconds = Math.round(floatVal * 24 * 3600);
+            const now = new Date();
+            now.setHours(0, 0, totalSeconds, 0);
+            return now.getTime();
+        }
+
+        // Handle HH:MM:SS format
         let cleanTime = t.replace(/am|pm/i, '').trim();
         const parts = cleanTime.split(':');
         if (parts.length >= 2) {
-          let hours = parseInt(parts[0]);
+          let hours = parseInt(parts[0], 10) || 0;
+          let isPM = t.toLowerCase().includes('pm');
+          let isAM = t.toLowerCase().includes('am');
           if (isPM && hours < 12) hours += 12;
           if (isAM && hours === 12) hours = 0;
-          return 1000000 + hours * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
+          
+          const mins = parseInt(parts[1], 10) || 0;
+          const secs = parseInt(parts[2], 10) || 0;
+          
+          const now = new Date();
+          now.setHours(hours, mins, secs, 0);
+          return now.getTime();
         }
         
         // Fallback Date parsing
         const d = new Date(t);
         if (!isNaN(d.getTime())) {
-           return 1000000 + d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds();
+           return d.getTime();
         }
         
         return 0;
       };
       
-      const valA = parseTime(a.time);
-      const valB = parseTime(b.time);
+      const valA = parseTimeMs(a.time);
+      const valB = parseTimeMs(b.time);
       
       if (valA !== valB) return valB - valA; // Descending (latest time first)
       

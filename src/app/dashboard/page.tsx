@@ -462,7 +462,20 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                               {row.time ? (
                                 <span className={styles.timeText}>
-                                  {row.time.includes('T') ? row.time.split('T')[1].split('.')[0] : row.time}
+                                  {(() => {
+                                    if (row.time.includes('T')) {
+                                      const d = new Date(row.time);
+                                      if (!isNaN(d.getTime())) return d.toLocaleTimeString('en-GB');
+                                    }
+                                    const floatVal = parseFloat(row.time);
+                                    if (!isNaN(floatVal) && floatVal >= 0 && floatVal < 1 && !row.time.includes(':')) {
+                                      const totalSeconds = Math.round(floatVal * 24 * 3600);
+                                      const d = new Date();
+                                      d.setHours(0, 0, totalSeconds, 0);
+                                      return d.toLocaleTimeString('en-GB');
+                                    }
+                                    return row.time;
+                                  })()}
                                 </span>
                               ) : (
                                 role?.toLowerCase() !== 'kaprodi' && (
