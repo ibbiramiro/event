@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styles from './TopNav.module.css';
 import { usePathname, useRouter } from 'next/navigation';
+import { logoutAction } from '@/app/login/actions';
 
 export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -11,7 +12,31 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
   const pathname = usePathname();
   const router = useRouter();
 
+  const handleSignOut = async () => {
+    setIsProfileOpen(false);
+    localStorage.clear(); // Clear all cached data including guests and profile data for security
+    
+    // Clear cookies manually on client side to be safe before calling server action
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    try {
+      await logoutAction();
+    } catch (error) {
+      // Next.js redirect() throws an error to navigate, so catch it or ignore
+      // Just in case, forcefully route to login
+      router.push('/login');
+    }
+  };
+
   useEffect(() => {
+    // Enforce session timeout / unauthorized access protection
+    const hasSession = document.cookie.includes('unievent_session=');
+    if (!hasSession && pathname !== '/login') {
+      handleSignOut();
+    }
+
     const storedName = localStorage.getItem('unievent_full_name');
     if (storedName) {
       setFullName(storedName);
@@ -26,7 +51,7 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
         setFullName(formattedName);
       }
     }
-  }, []);
+  }, [pathname]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -39,11 +64,6 @@ export default function TopNav({ onToggleSidebar }: { onToggleSidebar?: () => vo
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSignOut = () => {
-    setIsProfileOpen(false);
-    router.push('/login');
-  };
 
   const isGuestList = pathname === '/guest-list';
   const isCrm = pathname === '/crm';

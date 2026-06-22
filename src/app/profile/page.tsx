@@ -36,33 +36,36 @@ export default function ProfilePage() {
       .find(row => row.startsWith('unievent_email='))
       ?.split('=')[1];
       
-    const storedFullName = localStorage.getItem('unievent_full_name');
+    const fullNameCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('unievent_full_name='))
+      ?.split('=')[1];
 
     if (emailCookie) {
       setEmail(decodeURIComponent(emailCookie));
-      if (storedFullName) {
-        setFullName(storedFullName);
+      if (fullNameCookie) {
+        setFullName(decodeURIComponent(fullNameCookie));
       } else {
         try {
           const namePart = decodeURIComponent(emailCookie).split('@')[0];
           const formattedName = namePart.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
           setFullName(formattedName);
-          localStorage.setItem('unievent_full_name', formattedName);
         } catch (e) {}
       }
     } else {
       // Look for any auth info in localStorage as fallback
       const storedEmail = localStorage.getItem('unievent_email') || 'staff@university.edu';
       setEmail(storedEmail);
-      if (storedFullName) setFullName(storedFullName);
+      if (fullNameCookie) setFullName(decodeURIComponent(fullNameCookie));
     }
+    
+    // Clean up old local storage that causes bug across user sessions
+    localStorage.removeItem('unievent_full_name');
   }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFullName(val);
-    // Don't auto-save to localStorage until they click Save, or we can keep it
-    localStorage.setItem('unievent_full_name', val);
   };
 
   const handleSaveProfile = async () => {

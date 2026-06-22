@@ -56,6 +56,7 @@ export default function Sidebar() {
 
   const isReceptionist = role === 'Receptionist';
   const isKaprodi = role?.toLowerCase() === 'kaprodi';
+  const isMarketing = role === 'Marketing';
 
   let brandClass = styles.brandOriginal;
   let logoClass = styles.logoOriginal;
@@ -161,7 +162,7 @@ export default function Sidebar() {
           </Link>
         )}
         
-        {!isReceptionist && !isKaprodi && (
+        {!isReceptionist && !isKaprodi && !isMarketing && (
           <Link 
             href="/users" 
             className={`${styles.navItem} ${pathname === '/users' ? styles.active : ''} ${navItemClass}`}
