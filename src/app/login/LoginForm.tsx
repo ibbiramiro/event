@@ -135,21 +135,6 @@ export default function LoginForm() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <label style={{ fontSize: '14px', fontWeight: '500', color: '#334155' }}>PIN</label>
-          <button 
-            type="button" 
-            onClick={handleResetPin}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#0b1930', 
-              fontSize: '13px', 
-              fontWeight: '600', 
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-          >
-            Forgot PIN?
-          </button>
         </div>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
           {pin.map((digit, index) => (
@@ -182,6 +167,24 @@ export default function LoginForm() {
         </div>
         {/* Hidden input to pass the combined PIN to the server action */}
         <input type="hidden" name="pin" value={pin.join('')} />
+        
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2px' }}>
+          <button 
+            type="button" 
+            onClick={handleResetPin}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: '#0b1930', 
+              fontSize: '13px', 
+              fontWeight: '600', 
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            Forgot PIN?
+          </button>
+        </div>
       </div>
 
       <button 
