@@ -14,7 +14,6 @@ const supabase = createClient(
 );
 
 export default function DashboardPage() {
-  const [totalCheckedIn, setTotalCheckedIn] = useState(0);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -106,14 +105,12 @@ export default function DashboardPage() {
     if (storedGuests) {
       const parsed = JSON.parse(storedGuests) as Guest[];
       setGuests(parsed);
-      setTotalCheckedIn(parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
     }
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'unievent_guests' && e.newValue) {
         const parsed = JSON.parse(e.newValue) as Guest[];
         setGuests(parsed);
-        setTotalCheckedIn(parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
       }
     };
 
@@ -144,7 +141,6 @@ export default function DashboardPage() {
       if (sheetGuests && sheetGuests.length > 0) {
         setGuests(sheetGuests);
         localStorage.setItem('unievent_guests', JSON.stringify(sheetGuests));
-        setTotalCheckedIn(sheetGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
       }
     } catch (error) {
       console.error(error);
@@ -192,6 +188,15 @@ export default function DashboardPage() {
     setTempCheckinDisable(checkinDisable);
     setShowSettings(false);
   };
+
+  const registeredGuests = guests.filter(g => {
+    const reg = g.registrationNumber?.trim() || '';
+    return reg !== '' && reg !== '-';
+  });
+
+  const totalRsvpCount = registeredGuests.length;
+  const checkedInCount = registeredGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time.trim() !== '')).length;
+  const pendingCount = Math.max(0, totalRsvpCount - checkedInCount);
 
   return (
     <div className={`${styles.layout} ${isSidebarOpen ? '' : styles.sidebarClosed}`}>
@@ -277,15 +282,15 @@ export default function DashboardPage() {
             <div className={styles.statsRow}>
               <div className={styles.statBox}>
                 <span className={styles.statLabel}>Total RSVPs</span>
-                <span className={styles.statValue}>{guests.length}</span>
+                <span className={styles.statValue}>{totalRsvpCount}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLabel}>Checked In</span>
-                <span className={styles.statValue} style={{ color: 'var(--success-color)' }}>{totalCheckedIn}</span>
+                <span className={styles.statValue} style={{ color: 'var(--success-color)' }}>{checkedInCount}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLabel}>Pending</span>
-                <span className={styles.statValue}>{Math.max(0, guests.length - totalCheckedIn)}</span>
+                <span className={styles.statValue}>{pendingCount}</span>
               </div>
             </div>
           </div>
@@ -499,9 +504,6 @@ export default function DashboardPage() {
                                         setGuests(updatedGuests as any);
                                         localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
                                         
-                                        // Update checked in count
-                                        setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
-                                        
                                         // Trigger storage event so dashboard updates
                                         window.dispatchEvent(new Event('storage'));
                                       } catch (e) {
@@ -526,7 +528,6 @@ export default function DashboardPage() {
                                         const updatedGuests = guests.filter(g => g.id !== row.id);
                                         setGuests(updatedGuests as any);
                                         localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
-                                        setTotalCheckedIn(updatedGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input').length);
                                         window.dispatchEvent(new Event('storage'));
                                       } catch (e) {
                                         console.error(e);

@@ -50,6 +50,12 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       const attendance = row[7] || ''; // Column H is Checked-in
       const verifiedBy = row[8] || ''; // Column I is Diproses Oleh
       const jamHadir = row[9] || ''; // Column J is Jam Hadir
+      
+      const totalRSVPStr = row[10] || '0';
+      const totalHadirStr = row[11] || '0';
+      const totalRSVP = parseInt(totalRSVPStr, 10) || 0;
+      const totalHadir = parseInt(totalHadirStr, 10) || 0;
+      const status = row[12] || '';
 
       // Determine method from attendance status
       let method: 'Self Check-in' | 'Manual Input' | 'Spreadsheet' = 'Spreadsheet' as any;
@@ -70,6 +76,9 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
         nominal,
         registrationNumber,
         contact,
+        totalRSVP,
+        totalHadir,
+        status,
       });
     }
 

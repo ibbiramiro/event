@@ -9,6 +9,9 @@ export interface Guest {
   verifiedBy?: string;
   nominal?: string;
   contact?: string;
+  totalRSVP?: number;
+  totalHadir?: number;
+  status?: string;
 }
 
 export const initialGuests: Guest[] = [
