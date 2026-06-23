@@ -231,7 +231,7 @@ export default function ReportPage() {
     demoMap.set(abbr, (demoMap.get(abbr) || 0) + 1);
   });
   
-  const demoData = Array.from(demoMap.entries()).map(([name, value]) => ({ name, value }));
+  const demoData = Array.from(demoMap.entries()).map(([name, value]) => ({ name: `${name} (${value})`, value }));
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#facc15', '#10b981'];
 
   // 5. Watchlist Anomalies
@@ -448,29 +448,34 @@ export default function ReportPage() {
             </div>
 
             <div className={styles.chartCard}>
-              <h2 className={styles.cardTitle}>Demographics by Major</h2>
-              <div style={{ width: '100%', height: 250 }}>
+              <h2 className={styles.cardTitle} style={{ marginBottom: '24px' }}>Demographics by Major</h2>
+              <div style={{ width: '100%', height: 250, position: 'relative' }}>
                 {demoData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        isAnimationActive={false}
-                        data={demoData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {demoData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Legend layout="vertical" verticalAlign="middle" align="right" iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          isAnimationActive={false}
+                          data={demoData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {demoData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Legend layout="vertical" verticalAlign="middle" align="right" iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', bottom: '12px', width: '100%', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
+                      Total: {demoData.reduce((acc, curr) => acc + curr.value, 0)}
+                    </div>
+                  </>
                 ) : (
                   <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                     No demographic data
