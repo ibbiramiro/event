@@ -6,18 +6,30 @@ import Sidebar from '@/components/Sidebar/Sidebar';
 import TopNav from '@/components/TopNav/TopNav';
 import { Guest } from '@/lib/data';
 import { syncGuestsFromSheet } from '@/lib/googleSheets';
+import Confetti from 'react-confetti';
 
 export default function GuestListPage() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [totalCheckedIn, setTotalCheckedIn] = useState(0);
   const [qrUrl, setQrUrl] = useState('');
-  const [toasts, setToasts] = useState<{ id: number; name: string; major: string }[]>([]);
-  const [pendingToasts, setPendingToasts] = useState<{ id: number; name: string; major: string }[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; name: string; major: string; quote?: string }[]>([]);
+  const [pendingToasts, setPendingToasts] = useState<{ id: number; name: string; major: string; quote?: string }[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [checkinDisabled, setCheckinDisabled] = useState(false);
+  const [windowDimension, setWindowDimension] = useState({ width: 0, height: 0 });
   
   const animatedIdsRef = React.useRef<Set<string>>(new Set());
+  const sysQuotesRef = React.useRef<string[]>([]);
   const isInitialLoad = React.useRef(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWindowDimension({ width: window.innerWidth, height: window.innerHeight });
+      const handleResize = () => setWindowDimension({ width: window.innerWidth, height: window.innerHeight });
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -49,6 +61,12 @@ export default function GuestListPage() {
         const arr = json.data || [];
         const row = arr.find((r: any) => r.key === 'CheckinDisabled');
         setCheckinDisabled(row?.value === 'Y');
+
+        const quoteRow = arr.find((r: any) => r.key === 'MotivationQuotes' || r.key === 'Motivasi');
+        if (quoteRow && quoteRow.value) {
+          const quotes = quoteRow.value.split(',').map((q: string) => q.trim()).filter(Boolean);
+          sysQuotesRef.current = quotes;
+        }
       })
       .catch(console.error);
 
@@ -79,7 +97,16 @@ export default function GuestListPage() {
           // Sort chronologically by ID so queue runs in order
           newlyCheckedIn.sort((a, b) => Number(a.id) - Number(b.id));
           
-          const newToastData = newlyCheckedIn.map(g => ({ id: Date.now() + Number(g.id), name: g.name, major: g.major }));
+          const newToastData = newlyCheckedIn.map(g => {
+            const quotes = sysQuotesRef.current;
+            const randomQuote = quotes.length > 0 ? quotes[Math.floor(Math.random() * quotes.length)] : '';
+            return { 
+              id: Date.now() + Number(g.id), 
+              name: g.name, 
+              major: g.major,
+              quote: randomQuote
+            };
+          });
           setPendingToasts(prev => [...prev, ...newToastData]);
         }
         
@@ -101,6 +128,10 @@ export default function GuestListPage() {
           // Only add to queue if we haven't animated this exact checkin yet
           if (!animatedIdsRef.current.has(`local_${newToast.id}`)) {
             animatedIdsRef.current.add(`local_${newToast.id}`);
+            if (!newToast.quote && sysQuotesRef.current.length > 0) {
+              const quotes = sysQuotesRef.current;
+              newToast.quote = quotes[Math.floor(Math.random() * quotes.length)];
+            }
             setPendingToasts(prev => [...prev, newToast]);
           }
         } catch (err) {}
@@ -373,7 +404,25 @@ export default function GuestListPage() {
       {/* Toast Container */}
       {toasts.length > 0 && (
         <div className={styles.toastContainer}>
-          {toasts.map((toast) => (
+          {windowDimension.width > 0 && (
+            <Confetti 
+              width={windowDimension.width} 
+              height={windowDimension.height} 
+              recycle={false} 
+              numberOfPieces={400}
+              gravity={0.15}
+              style={{ zIndex: 9999, pointerEvents: 'none' }}
+            />
+          )}
+          {toasts.map((toast) => {
+            let nameColor = '#0f172a';
+            if (toast.major === 'Computer Science') nameColor = '#4f46e5';
+            else if (toast.major === 'Information Systems') nameColor = '#9333ea';
+            else if (toast.major === 'Visual Communication Design') nameColor = '#ea580c';
+            else if (toast.major === 'Digital Business') nameColor = '#16a34a';
+            else if (toast.major === 'International Trade') nameColor = '#db2777';
+
+            return (
             <div key={toast.id} className={styles.toast}>
               <div className={styles.toastIcon}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -382,10 +431,12 @@ export default function GuestListPage() {
                 </svg>
               </div>
               <div className={styles.toastContent}>
-                <span className={styles.toastTitle}>Check-in Successful!</span>
-                <span className={styles.toastDesc}>Welcome, {toast.name}</span>
+                <span className={styles.toastTitle} style={{ fontSize: '18px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Check-in Successful!</span>
+                <span className={styles.toastDesc} style={{ fontSize: '36px', fontWeight: '700', lineHeight: '1.2', marginTop: '4px', marginBottom: '16px', color: '#0f172a' }}>
+                  Selamat Datang <span style={{ color: nameColor }}>{toast.name}</span> di Binus @Medan
+                </span>
                 {toast.major && (
-                  <div className={styles.toastMajor}>
+                  <div className={styles.toastMajor} style={{ fontSize: '20px', padding: '10px 24px', borderRadius: '30px' }}>
                     <span className={styles.toastMajorIcon}>
                       {toast.major === 'Computer Science' && (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -426,9 +477,15 @@ export default function GuestListPage() {
                     <span>{toast.major}</span>
                   </div>
                 )}
+                {toast.quote && (
+                  <div style={{ marginTop: '24px', fontSize: '20px', fontStyle: 'normal', fontWeight: '500', color: '#334155', maxWidth: '650px', lineHeight: '1.5', textAlign: 'center' }}>
+                    "{toast.quote}"
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
