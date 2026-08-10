@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styles from './scanner.module.css';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import { Guest } from '@/lib/data';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { syncGuestsFromSheet, checkInGuestToSheet } from '@/lib/googleSheets';
 
 export default function ScannerPage() {
@@ -15,8 +15,9 @@ export default function ScannerPage() {
   const [totalHadir, setTotalHadir] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
   
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -39,30 +40,35 @@ export default function ScannerPage() {
   }, []);
 
   useEffect(() => {
-    // Initialize Scanner only when no scan result is pending
+    let html5QrCode: Html5Qrcode;
     if (!scanResult) {
-      scannerRef.current = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 },
-        false
-      );
+      html5QrCode = new Html5Qrcode("reader");
+      scannerRef.current = html5QrCode;
       
-      scannerRef.current.render(onScanSuccess, onScanFailure);
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 },
+        onScanSuccess,
+        onScanFailure
+      ).catch(console.error);
     }
     
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
+      if (html5QrCode) {
+        try {
+          html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+          }).catch(() => {
+            try { html5QrCode.clear(); } catch(e) {}
+          });
+        } catch (e) {
+          try { html5QrCode.clear(); } catch(e) {}
+        }
       }
     };
   }, [scanResult]);
 
   const onScanSuccess = (decodedText: string) => {
-    // Stop scanner to prevent multiple scans
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-    }
-    
     setScanResult(decodedText);
     
     // Look up guest
@@ -104,9 +110,12 @@ export default function ScannerPage() {
       localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
       window.dispatchEvent(new Event('storage'));
       
-      // Reset scanner
-      handleReset();
-      alert('Check-in successful!');
+      // Show success modal
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        handleReset();
+      }, 1500);
     } catch (err) {
       console.error(err);
       alert('Failed to check in guest. Please try again.');
@@ -150,11 +159,9 @@ export default function ScannerPage() {
           </div>
 
           <div className={styles.scannerContainer}>
-            {!scanResult && (
-              <div className={styles.readerWrapper}>
-                <div id="reader" style={{ width: '100%', minHeight: '300px' }}></div>
-              </div>
-            )}
+            <div className={styles.readerWrapper} style={{ display: scanResult ? 'none' : 'block' }}>
+              <div id="reader" style={{ width: '100%', minHeight: '300px', borderRadius: '16px', overflow: 'hidden', border: 'none' }}></div>
+            </div>
 
             {scanResult && !scannedGuest && (
               <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -170,7 +177,7 @@ export default function ScannerPage() {
         </main>
       </div>
 
-      {scanResult && scannedGuest && (
+      {scanResult && scannedGuest && !showSuccess && (
         <div className={styles.modalOverlay}>
           <div className={styles.scanModalContent}>
             <h3 className={styles.modalTitle}>Guest Found</h3>
@@ -200,6 +207,23 @@ export default function ScannerPage() {
                 {isSubmitting ? 'Checking in...' : 'Confirm Check-in'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccess && scannedGuest && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.scanModalContent} style={{ textAlign: 'center', padding: '40px 20px', maxWidth: '400px' }}>
+            <div style={{ color: '#10b981', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <h3 className={styles.modalTitle} style={{ marginBottom: '8px', fontSize: '24px' }}>Check-in Successful!</h3>
+            <p style={{ color: '#64748b', fontSize: '16px', lineHeight: '1.5' }}>
+              <strong style={{ color: '#0f172a' }}>{scannedGuest.name}</strong><br />has been successfully checked in.
+            </p>
           </div>
         </div>
       )}

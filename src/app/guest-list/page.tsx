@@ -478,7 +478,19 @@ export default function GuestListPage() {
                   </div>
                 )}
                 {toast.quote && (
-                  <div style={{ marginTop: '24px', fontSize: '20px', fontStyle: 'normal', fontWeight: '500', color: '#334155', maxWidth: '650px', lineHeight: '1.5', textAlign: 'center' }}>
+                  <div style={{ 
+                    margin: '32px auto 0',
+                    padding: '16px 24px',
+                    fontSize: '19px', 
+                    fontStyle: 'italic', 
+                    fontWeight: '500', 
+                    color: '#475569', 
+                    maxWidth: '600px', 
+                    lineHeight: '1.6', 
+                    textAlign: 'center',
+                    borderTop: '1px solid #e2e8f0',
+                    letterSpacing: '0.3px'
+                  }}>
                     "{toast.quote}"
                   </div>
                 )}
