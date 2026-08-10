@@ -109,6 +109,7 @@ export async function checkInGuestToSheet(rowNumber: string | number, webAppUrl?
       payload.totalHadir = totalHadir;
       payload.total_hadir = totalHadir;
       payload['Total Hadir'] = totalHadir;
+      payload['Total Hadir (#orang)'] = totalHadir;
     }
 
     const res = await fetch('/api/guests', {
