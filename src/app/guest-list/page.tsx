@@ -1,0 +1,493 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import styles from './guestList.module.css';
+import Sidebar from '@/components/Sidebar/Sidebar';
+import TopNav from '@/components/TopNav/TopNav';
+import { Guest } from '@/lib/data';
+import { syncGuestsFromSheet } from '@/lib/googleSheets';
+import Confetti from 'react-confetti';
+
+export default function GuestListPage() {
+  const [guests, setGuests] = useState<Guest[]>([]);
+  const [totalCheckedIn, setTotalCheckedIn] = useState(0);
+  const [qrUrl, setQrUrl] = useState('');
+  const [toasts, setToasts] = useState<{ id: number; name: string; major: string; quote?: string }[]>([]);
+  const [pendingToasts, setPendingToasts] = useState<{ id: number; name: string; major: string; quote?: string }[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [checkinDisabled, setCheckinDisabled] = useState(false);
+  const [windowDimension, setWindowDimension] = useState({ width: 0, height: 0 });
+  
+  const animatedIdsRef = React.useRef<Set<string>>(new Set());
+  const sysQuotesRef = React.useRef<string[]>([]);
+  const isInitialLoad = React.useRef(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWindowDimension({ width: window.innerWidth, height: window.innerHeight });
+      const handleResize = () => setWindowDimension({ width: window.innerWidth, height: window.innerHeight });
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+    }
+    // 1. Initial Local Storage Load (for instant display before API finishes)
+    const storedGuests = localStorage.getItem('unievent_guests');
+    if (storedGuests) {
+      try {
+        const parsed = JSON.parse(storedGuests) as Guest[];
+        setGuests(parsed);
+        const checkedIn = parsed.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''));
+        setTotalCheckedIn(checkedIn.length);
+        
+        // Add all existing checked-in guests to animatedIds so they don't animate on refresh
+        checkedIn.forEach(g => animatedIdsRef.current.add(g.id));
+      } catch (e) {}
+    }
+
+    if (typeof window !== 'undefined') {
+      const checkinUrl = `${window.location.origin}/checkin`;
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`);
+    }
+
+    // 2. Fetch global checkin status once
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(json => {
+        const arr = json.data || [];
+        const row = arr.find((r: any) => r.key === 'CheckinDisabled');
+        setCheckinDisabled(row?.value === 'Y');
+
+        const quoteRow = arr.find((r: any) => r.key === 'MotivationQuotes' || r.key === 'Motivasi');
+        if (quoteRow && quoteRow.value) {
+          const quotes = quoteRow.value.split(',').map((q: string) => q.trim()).filter(Boolean);
+          sysQuotesRef.current = quotes;
+        }
+      })
+      .catch(console.error);
+
+    // 3. Auto-Polling System (Every 5 seconds)
+    const fetchGuests = async () => {
+      try {
+        const freshGuests = await syncGuestsFromSheet();
+        if (!freshGuests || freshGuests.length === 0) return;
+        
+        setGuests(freshGuests);
+        const newlyCheckedIn = freshGuests.filter(g => {
+          const isCheckedIn = g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== '');
+          const isNew = !animatedIdsRef.current.has(g.id);
+          return isCheckedIn && isNew;
+        });
+
+        const newTotal = freshGuests.filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== '')).length;
+        setTotalCheckedIn(newTotal);
+
+        if (isInitialLoad.current) {
+          // On first API fetch, mark all as animated to prevent ghost toasts
+          newlyCheckedIn.forEach(g => animatedIdsRef.current.add(g.id));
+          isInitialLoad.current = false;
+        } else if (newlyCheckedIn.length > 0) {
+          // Put new check-ins into the FIFO animation queue!
+          newlyCheckedIn.forEach(g => animatedIdsRef.current.add(g.id));
+          
+          // Sort chronologically by ID so queue runs in order
+          newlyCheckedIn.sort((a, b) => Number(a.id) - Number(b.id));
+          
+          const newToastData = newlyCheckedIn.map(g => {
+            const quotes = sysQuotesRef.current;
+            const randomQuote = quotes.length > 0 ? quotes[Math.floor(Math.random() * quotes.length)] : '';
+            return { 
+              id: Date.now() + Number(g.id), 
+              name: g.name, 
+              major: g.major,
+              quote: randomQuote
+            };
+          });
+          setPendingToasts(prev => [...prev, ...newToastData]);
+        }
+        
+        // Save to local storage for caching
+        localStorage.setItem('unievent_guests', JSON.stringify(freshGuests));
+      } catch (err) {
+        console.error('Polling error', err);
+      }
+    };
+
+    fetchGuests(); // Run immediately
+    const intervalId = setInterval(fetchGuests, 5000); // Poll every 5s
+
+    // Listen for local tab checkins (if admin checks someone in on the same browser)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'unievent_new_toast' && e.newValue) {
+        try {
+          const newToast = JSON.parse(e.newValue);
+          // Only add to queue if we haven't animated this exact checkin yet
+          if (!animatedIdsRef.current.has(`local_${newToast.id}`)) {
+            animatedIdsRef.current.add(`local_${newToast.id}`);
+            if (!newToast.quote && sysQuotesRef.current.length > 0) {
+              const quotes = sysQuotesRef.current;
+              newToast.quote = quotes[Math.floor(Math.random() * quotes.length)];
+            }
+            setPendingToasts(prev => [...prev, newToast]);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // FIFO Animation Queue Processor
+  useEffect(() => {
+    if (toasts.length === 0 && pendingToasts.length > 0) {
+      const nextToast = pendingToasts[0];
+      
+      // Move from pending to active
+      setPendingToasts(prev => prev.slice(1));
+      setToasts([nextToast]);
+      
+      // Hide active toast after 4 seconds, which will trigger the next one!
+      setTimeout(() => {
+        setToasts([]);
+      }, 4000);
+    }
+  }, [toasts.length, pendingToasts]);
+
+  const checkedInGuests = guests
+    .filter(g => g.method === 'Self Check-in' || g.method === 'Manual Input' || (g.time && g.time !== ''))
+    .sort((a, b) => {
+      const parseTimeMs = (t: string) => {
+        if (!t || t === 'Checked In') return 0;
+        
+        // Handle ISO Date strings (Google Sheets API sometimes sends time as 1899-12-30T09:56:17.000Z)
+        if (t.includes('T')) {
+          const d = new Date(t);
+          if (!isNaN(d.getTime())) return d.getTime();
+        }
+
+        // Handle fraction of day (if Google Sheets API returns raw number for time, e.g. 0.442118)
+        const floatVal = parseFloat(t);
+        if (!isNaN(floatVal) && floatVal >= 0 && floatVal < 1) {
+            const totalSeconds = Math.round(floatVal * 24 * 3600);
+            const now = new Date();
+            now.setHours(0, 0, totalSeconds, 0);
+            return now.getTime();
+        }
+
+        // Handle HH:MM:SS format
+        let cleanTime = t.replace(/am|pm/i, '').trim();
+        const parts = cleanTime.split(':');
+        if (parts.length >= 2) {
+          let hours = parseInt(parts[0], 10) || 0;
+          let isPM = t.toLowerCase().includes('pm');
+          let isAM = t.toLowerCase().includes('am');
+          if (isPM && hours < 12) hours += 12;
+          if (isAM && hours === 12) hours = 0;
+          
+          const mins = parseInt(parts[1], 10) || 0;
+          const secs = parseInt(parts[2], 10) || 0;
+          
+          const now = new Date();
+          now.setHours(hours, mins, secs, 0);
+          return now.getTime();
+        }
+        
+        // Fallback Date parsing
+        const d = new Date(t);
+        if (!isNaN(d.getTime())) {
+           return d.getTime();
+        }
+        
+        return 0;
+      };
+      
+      const valA = parseTimeMs(a.time);
+      const valB = parseTimeMs(b.time);
+      
+      if (valA !== valB) return valB - valA; // Descending (latest time first)
+      
+      // Fallback to row ID (newest row first)
+      return Number(b.id) - Number(a.id);
+    });
+
+  const handleToggleCheckin = async () => {
+    const isDisabling = !checkinDisabled;
+    const msg = isDisabling 
+      ? "Apakah Anda yakin ingin mematikan fitur Check-in? Guest tidak akan bisa mengakses form check-in." 
+      : "Apakah Anda yakin ingin menyalakan kembali fitur Check-in?";
+    if (!window.confirm(msg)) return;
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CheckinDisabled: isDisabling })
+      });
+      if (res.ok) {
+        setCheckinDisabled(isDisabling);
+      } else {
+        alert("Gagal mengubah status checkin.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengubah status checkin.");
+    }
+  };
+
+  return (
+    <div className={`${styles.layout} ${isSidebarOpen ? '' : styles.sidebarClosed}`}>
+      <div className={`${styles.sidebarWrapper} ${isSidebarOpen ? styles.open : styles.closed}`}>
+        <Sidebar />
+      </div>
+      {isSidebarOpen && (
+        <div 
+          className={styles.mobileOverlay} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      <div className={styles.mainContent}>
+        <div style={{ padding: '20px 40px 0', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: '#0b1930', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px', fontWeight: 'bold' }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            Menu
+          </button>
+        </div>
+        <main className={styles.contentWrapper}>
+          <div className={styles.pageHeader}>
+            <div className={styles.headerText}>
+              <h1 className={styles.pageTitle}>Guest List</h1>
+              <p className={styles.pageSubtitle}>List of guests who have successfully checked in.</p>
+            </div>
+
+            <div className={styles.statsRow}>
+              <div className={styles.statBox}>
+                <span className={styles.statLabel}>Checked In</span>
+                <span className={styles.statValue} style={{ color: 'var(--success-color)' }}>{totalCheckedIn}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.grid}>
+            {/* Left Column - Guest Access */}
+            <div className={`${styles.card} ${styles.guestAccessCard}`}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle} style={{ fontSize: '18px' }}>Guest Access</h2>
+              </div>
+              <p className={styles.instructionText}>
+                Scan QR code for self-service registration
+              </p>
+
+              <div className={styles.qrPlaceholder}>
+                {qrUrl ? (
+                  <img src={qrUrl} alt="Check-in QR Code" style={{ width: '280px', height: '280px', borderRadius: '8px' }} />
+                ) : (
+                  <svg className={styles.qrIcon} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                    <path d="M9 3v4"></path><path d="M15 3v4"></path>
+                    <path d="M9 15v4"></path><path d="M15 15v4"></path>
+                  </svg>
+                )}
+              </div>
+
+              <button 
+                onClick={handleToggleCheckin}
+                className={styles.openFormBtn}
+                style={{ 
+                  backgroundColor: checkinDisabled ? '#10b981' : '#ef4444', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  width: '100%' 
+                }}
+              >
+                {checkinDisabled ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Enable Check-in
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Disable Check-in
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Right Column - Real-time Arrivals Table */}
+            <div className={styles.card}>
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>REG. NUMBER</th>
+                      <th>STUDENT NAME</th>
+                      <th>MAJOR INT.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkedInGuests.length > 0 ? checkedInGuests.map((row) => {
+                      const safeName = String(row.name || '');
+                    const initials = safeName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || '??';
+                    let majorTagClass = styles.tagUndecided;
+                    if (row.major === 'Computer Science') majorTagClass = styles.tagCS;
+                    else if (row.major === 'Information Systems') majorTagClass = styles.tagIS;
+                    else if (row.major === 'Visual Communication Design') majorTagClass = styles.tagDKV;
+                    else if (row.major === 'Digital Business') majorTagClass = styles.tagDB;
+                    else if (row.major === 'International Trade') majorTagClass = styles.tagIT;
+
+                    let avatarClass = styles.bgLightGray;
+                    if (row.major === 'Computer Science') avatarClass = styles.bgBlue;
+                    else if (row.major === 'Information Systems') avatarClass = styles.bgOrange;
+                    else if (row.major === 'Visual Communication Design') avatarClass = styles.bgLightPurple;
+                    else if (row.major === 'Digital Business') avatarClass = styles.bgGreen;
+                    else if (row.major === 'International Trade') avatarClass = styles.bgPink;
+
+                    return (
+                      <tr key={row.id}>
+                        <td style={{ fontSize: '16px', padding: '20px 32px', color: '#64748b', fontWeight: '500' }}>
+                          {row.registrationNumber || '-'}
+                        </td>
+                        <td style={{ fontSize: '20px', fontWeight: '600', padding: '20px 32px' }}>
+                          <div className={styles.studentCell}>
+                            <div className={`${styles.avatar} ${avatarClass}`} style={{ width: '48px', height: '48px', fontSize: '18px' }}>
+                              {initials}
+                            </div>
+                            <div className={styles.studentInfo}>
+                              <span className={styles.studentName}>{row.name}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px 32px' }}>
+                          <span className={`${styles.tag} ${majorTagClass}`} style={{ fontSize: '16px', padding: '8px 16px' }}>{row.major}</span>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                        No guests have checked in yet.
+                      </td>
+                    </tr>
+                  )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Toast Container */}
+      {toasts.length > 0 && (
+        <div className={styles.toastContainer}>
+          {windowDimension.width > 0 && (
+            <Confetti 
+              width={windowDimension.width} 
+              height={windowDimension.height} 
+              recycle={false} 
+              numberOfPieces={400}
+              gravity={0.15}
+              style={{ zIndex: 9999, pointerEvents: 'none' }}
+            />
+          )}
+          {toasts.map((toast) => {
+            let nameColor = '#0f172a';
+            if (toast.major === 'Computer Science') nameColor = '#4f46e5';
+            else if (toast.major === 'Information Systems') nameColor = '#9333ea';
+            else if (toast.major === 'Visual Communication Design') nameColor = '#ea580c';
+            else if (toast.major === 'Digital Business') nameColor = '#16a34a';
+            else if (toast.major === 'International Trade') nameColor = '#db2777';
+
+            return (
+            <div key={toast.id} className={styles.toast}>
+              <div className={styles.toastIcon}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div className={styles.toastContent}>
+                <span className={styles.toastTitle} style={{ fontSize: '18px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Check-in Successful!</span>
+                <span className={styles.toastDesc} style={{ fontSize: '36px', fontWeight: '700', lineHeight: '1.2', marginTop: '4px', marginBottom: '16px', color: '#0f172a' }}>
+                  Selamat Datang <span style={{ color: nameColor }}>{toast.name}</span> di Binus @Medan
+                </span>
+                {toast.major && (
+                  <div className={styles.toastMajor} style={{ fontSize: '20px', padding: '10px 24px', borderRadius: '30px' }}>
+                    <span className={styles.toastMajorIcon}>
+                      {toast.major === 'Computer Science' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                          <line x1="8" y1="21" x2="16" y2="21"></line>
+                          <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                      )}
+                      {toast.major === 'Information Systems' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                      )}
+                      {toast.major === 'Visual Communication Design' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="13.5" cy="5.5" r="2.5"></circle>
+                          <circle cx="20.5" cy="11.5" r="2.5"></circle>
+                          <circle cx="17.5" cy="19.5" r="2.5"></circle>
+                          <circle cx="10.5" cy="20.5" r="2.5"></circle>
+                          <path d="M5.1 14c-.6-1.5-1.1-3.2-1.1-4.8 0-4.4 3.6-8.2 8-8.2s8 3.6 8 8-3.6 8-8 8H7.2"></path>
+                        </svg>
+                      )}
+                      {toast.major === 'Digital Business' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                      )}
+                      {toast.major === 'International Trade' && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="2" y1="12" x2="22" y2="12"></line>
+                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                      )}
+                    </span>
+                    <span>{toast.major}</span>
+                  </div>
+                )}
+                {toast.quote && (
+                  <div style={{ marginTop: '24px', fontSize: '20px', fontStyle: 'normal', fontWeight: '500', color: '#334155', maxWidth: '650px', lineHeight: '1.5', textAlign: 'center' }}>
+                    "{toast.quote}"
+                  </div>
+                )}
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
