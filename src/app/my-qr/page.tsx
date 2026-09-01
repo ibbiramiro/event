@@ -31,8 +31,8 @@ export default function MyQRPage() {
     const trimmedReg = regNumber.trim();
     if (!trimmedReg) return;
 
-    if (trimmedReg.length < 10) {
-      setErrorMsg('Nomor registrasi harus terdiri dari minimal 10 karakter/angka.');
+    if (trimmedReg.length < 9) {
+      setErrorMsg('Nomor registrasi harus terdiri dari minimal 9 karakter/angka.');
       return;
     }
 

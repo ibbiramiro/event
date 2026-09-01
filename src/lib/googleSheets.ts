@@ -1,6 +1,6 @@
 import { Guest } from './data';
 
-export async function synnpmcGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> {
+export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> {
   try {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
