@@ -1,6 +1,6 @@
 import { Guest } from './data';
 
-export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> {
+export async function synnpmcGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> {
   try {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
@@ -21,12 +21,12 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
         const errorData = await res.json();
         if (errorData && errorData.message) errMsg += ': ' + errorData.message;
         else if (errorData && errorData.error) errMsg += ': ' + errorData.error;
-      } catch (e) {}
+      } catch (e) { }
       throw new Error(errMsg);
     }
 
     const data: any[][] = await res.json();
-    
+
     if (!data || data.length < 2) {
       return [];
     }
@@ -40,7 +40,7 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       const row = data[i];
       // rowNumber in Google Sheets is i + 1
       const sheetRowNumber = i + 1;
-      
+
       const registrationNumber = row[1] ? row[1].toString() : '';
       const name = row[2] || '';
       const major = row[3] || '';
@@ -50,7 +50,7 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
       const attendance = row[7] || ''; // Column H is Checked-in
       const verifiedBy = row[8] || ''; // Column I is Diproses Oleh
       const jamHadir = row[9] || ''; // Column J is Jam Hadir
-      
+
       const totalRSVPStr = row[10] || '0';
       const totalHadirStr = row[11] || '0';
       const totalRSVP = parseInt(totalRSVPStr, 10) || 0;
@@ -59,7 +59,7 @@ export async function syncGuestsFromSheet(webAppUrl?: string): Promise<Guest[]> 
 
       // Determine method from attendance status
       let method: 'Self Check-in' | 'Manual Input' | 'Spreadsheet' = 'Spreadsheet' as any;
-      
+
       // If it's already checked in on sheet, maybe it was manual or self, we can default to 'Spreadsheet'
       if (attendance === 'Checked-in') {
         method = 'Self Check-in'; // or we can leave it as something else

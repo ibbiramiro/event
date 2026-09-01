@@ -1,0 +1,221 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-background);
+  padding: 2rem;
+}
+
+.card {
+  background-color: var(--color-surface);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  width: 100%;
+  max-width: 28rem;
+  padding: 2.5rem;
+  transition: all 0.3s ease;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 33, 105, 0.1);
+}
+
+.input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.button {
+  width: 100%;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--color-primary-light);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.qrContainer {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ticket {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 22rem;
+  text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.ticketName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.ticketRsvpBadge {
+  display: inline-block;
+  background-color: var(--color-primary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.qrWrapper {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.ticketId {
+  margin-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 0.05em;
+}
+
+.ticketLabel {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 0.25rem;
+}
+
+.downloadButton {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 22rem;
+}
+
+.downloadButton:hover {
+  background-color: #059669;
+}
+
+.downloadButton:active {
+  transform: translateY(1px);
+}
+
+.resetLink {
+  margin-top: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.resetLink:hover {
+  color: var(--text-main);
+}
+
+.errorText {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  background-color: #fef2f2;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #fecaca;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
