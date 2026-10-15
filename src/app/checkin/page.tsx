@@ -1,340 +1,482 @@
 'use client';
 
-import React, { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import QRCode from 'react-qr-code';
 import styles from './page.module.css';
-import { Guest } from '@/lib/data';
-import Link from 'next/link';
 
-export default function MobileCheckIn() {
-  const [formData, setFormData] = useState({ name: '', contact: '', major: '', registrationNumber: '' });
-  const [isLocked, setIsLocked] = useState(false);
-  const [guestsList, setGuestsList] = useState<Guest[]>([]);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [checkinDisabled, setCheckinDisabled] = useState(false);
+const PROGRAMS = [
+  { name: 'Computer Science', code: 'CS', description: 'Technology, software, and intelligent systems' },
+  { name: 'Visual Communication Design', code: 'VCD', description: 'Visual stories, branding, and creative media' },
+  { name: 'Information System', code: 'IS', description: 'Business processes and digital solutions' },
+  { name: 'Digital Business', code: 'DB', description: 'Innovation, entrepreneurship, and e-commerce' },
+  { name: 'International Trade', code: 'IT', description: 'Global markets and international commerce' },
+] as const;
 
-  React.useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(json => {
-        const arr = json.data || [];
-        const row = arr.find((r: any) => r.key === 'CheckinDisabled');
-        setCheckinDisabled(row?.value === 'Y');
+type ParticipantType = '' | 'BINUSIAN' | 'NON_BINUSIAN';
+
+type FormData = {
+  participantType: ParticipantType;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  program: string;
+  binusianId: string;
+  institution: string;
+  consent: boolean;
+};
+
+type Registration = {
+  id: string;
+  registrationNumber: string;
+  participantType: Exclude<ParticipantType, ''>;
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  program: string;
+  binusianId: string | null;
+  institution: string | null;
+  createdAt: string;
+};
+
+const EMPTY_FORM: FormData = {
+  participantType: '',
+  fullName: '',
+  email: '',
+  whatsapp: '',
+  program: '',
+  binusianId: '',
+  institution: '',
+  consent: false,
+};
+
+function createSubmissionId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+export default function EventRegistrationPage() {
+  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
+  const [submissionId, setSubmissionId] = useState(createSubmissionId);
+  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegistrationDisabled, setIsRegistrationDisabled] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [copyLabel, setCopyLabel] = useState('Copy number');
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch('/api/settings', { signal: controller.signal })
+      .then((response) => response.json())
+      .then((payload) => {
+        const settings = Array.isArray(payload.data) ? payload.data : [];
+        const setting = settings.find((item: { key?: string }) => item.key === 'CheckinDisabled');
+        setIsRegistrationDisabled(setting?.value === 'Y');
       })
-      .catch(console.error);
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error('Unable to read registration availability:', error);
+        }
+      });
 
-    import('@/lib/googleSheets').then(({ syncGuestsFromSheet }) => {
-      syncGuestsFromSheet().then(data => setGuestsList(data)).catch(console.error);
-    });
+    return () => controller.abort();
   }, []);
 
-  const handleRegNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setFormData(prev => ({ ...prev, registrationNumber: val }));
-
-    if (val.trim() !== '') {
-      const found = guestsList.find(g => g.registrationNumber === val.trim());
-      if (found) {
-        setFormData(prev => ({ ...prev, name: found.name, major: found.major, contact: found.contact || '' }));
-        setIsLocked(true);
-      } else {
-        setIsLocked(false);
-      }
-    } else {
-      setIsLocked(false);
-    }
+  const updateField = <Field extends keyof FormData>(field: Field, value: FormData[Field]) => {
+    setFormData((current) => ({ ...current, [field]: value }));
+    setErrorMessage('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name || !formData.major) return;
+  const chooseParticipantType = (participantType: Exclude<ParticipantType, ''>) => {
+    setFormData((current) => ({
+      ...current,
+      participantType,
+      email: '',
+      binusianId: '',
+      institution: '',
+    }));
+    setErrorMessage('');
+  };
 
-    setIsLoading(true);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage('');
 
-    // Build the guest object
-    const newGuest: Guest = {
-      id: Date.now().toString(),
-      registrationNumber: formData.registrationNumber,
-      name: formData.name,
-      time: new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      major: formData.major,
-      method: 'Self Check-in',
-    };
+    if (!formData.participantType) {
+      setErrorMessage('Choose a participant category to continue.');
+      return;
+    }
+    if (!formData.program) {
+      setErrorMessage('Choose your study program.');
+      return;
+    }
+    if (formData.participantType === 'BINUSIAN' && !formData.email.toLowerCase().endsWith('@binus.ac.id')) {
+      setErrorMessage('Use your official @binus.ac.id email address.');
+      return;
+    }
+    if (formData.participantType === 'BINUSIAN' && !/^\d{10}$/.test(formData.binusianId)) {
+      setErrorMessage('BINUSIAN ID must contain exactly 10 digits.');
+      return;
+    }
+    if (formData.participantType === 'NON_BINUSIAN' && formData.institution.trim().length < 2) {
+      setErrorMessage('Enter your institution, school, or community.');
+      return;
+    }
+    if (!formData.consent) {
+      setErrorMessage('You must agree to the registration terms.');
+      return;
+    }
 
-    // Fetch fresh guests from the server to check if they already exist
-    const { syncGuestsFromSheet, checkInGuestToSheet, registerGuestToSheet } = await import('@/lib/googleSheets');
-    const existingGuests = await syncGuestsFromSheet(undefined);
-    
-    // Check if the guest already exists locally by name and major
-    const existingIndex = existingGuests.findIndex(
-      g => String(g.name || '').toLowerCase() === formData.name.toLowerCase() && g.major === formData.major
-    );
+    setIsSubmitting(true);
 
-    let response;
     try {
-      if (existingIndex !== -1) {
-        // Guest exists, check them in
-        response = await checkInGuestToSheet(existingGuests[existingIndex].id, undefined);
-      } else {
-        await registerGuestToSheet(formData, undefined);
-        
-        // Wait 1.5 seconds to ensure Google Sheets has fully committed the new row
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Fetch fresh guests to find the row number of the newly registered guest
-        const freshGuests = await syncGuestsFromSheet(undefined);
-        // Find the last matching guest (in case of duplicates)
-        const newlyAdded = [...freshGuests].reverse().find(g => String(g.name || '').toLowerCase() === formData.name.toLowerCase() && g.major === formData.major);
-        
-        if (newlyAdded) {
-          newGuest.id = newlyAdded.id;
-          // Immediately check them in since this is the Check-In page!
-          await checkInGuestToSheet(newGuest.id, undefined);
-        }
+      const response = await fetch('/api/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, idempotencyKey: submissionId }),
+      });
+      const payload = (await response.json()) as { registration?: Registration; error?: string };
+
+      if (!response.ok || !payload.registration) {
+        throw new Error(payload.error || 'Registration could not be completed.');
       }
+
+      setRegistration(payload.registration);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      console.error('Failed to sync to spreadsheet', error);
-      // Still proceed to show success locally if API fails
+      setErrorMessage(error instanceof Error ? error.message : 'Registration could not be completed.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    let updatedGuests;
-    if (existingIndex !== -1) {
-      // Update existing guest
-      const existing = existingGuests[existingIndex];
-      existing.time = newGuest.time;
-      existing.method = 'Self Check-in';
-      
-      // Move to top
-      existingGuests.splice(existingIndex, 1);
-      updatedGuests = [existing, ...existingGuests];
-    } else {
-      // Add as new guest
-      updatedGuests = [newGuest, ...existingGuests];
-    }
-
-    localStorage.setItem('unievent_guests', JSON.stringify(updatedGuests));
-    
-    // Set toast notification data for the Guest List
-    const toastData = { id: Date.now(), name: newGuest.name, major: newGuest.major };
-    localStorage.setItem('unievent_new_toast', JSON.stringify(toastData));
-    
-    // Dispatch event to update other tabs immediately
-    window.dispatchEvent(new Event('storage'));
-
-    setIsLoading(false);
-    setIsSuccess(true);
   };
 
-  if (isSuccess) {
+  const copyRegistrationNumber = async () => {
+    if (!registration) return;
+
+    try {
+      await navigator.clipboard.writeText(registration.registrationNumber);
+      setCopyLabel('Copied');
+      window.setTimeout(() => setCopyLabel('Copy number'), 1800);
+    } catch {
+      setCopyLabel(registration.registrationNumber);
+    }
+  };
+
+  const startAnotherRegistration = () => {
+    setFormData(EMPTY_FORM);
+    setSubmissionId(createSubmissionId());
+    setRegistration(null);
+    setErrorMessage('');
+    setCopyLabel('Copy number');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (registration) {
     return (
-      <div className={styles.mobileContainer}>
-        <div className={styles.successOverlay}>
-          <div className={styles.successCheck}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
+      <main className={styles.pageShell}>
+        <section className={styles.successCard} aria-labelledby="registration-success-title">
+          <div className={styles.successMark} aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="m5 12 4 4L19 6" />
             </svg>
           </div>
-          <h2 className={styles.headerTitle} style={{ fontSize: '24px' }}>You're Checked In!</h2>
-          <p className={styles.headerSubtitle}>Thank you, {formData.name}. Please proceed to the main hall.</p>
-          {formData.major && (
-            <div style={{ marginTop: '16px', display: 'inline-block', backgroundColor: '#f1f5f9', padding: '8px 24px', borderRadius: '24px', color: '#0b1930', fontWeight: '600', fontSize: '15px' }}>
-              Program: {formData.major}
+          <p className={styles.eyebrow}>Registration successful</p>
+          <h1 id="registration-success-title">Your event pass is ready.</h1>
+          <p className={styles.successLead}>
+            Welcome, <strong>{registration.fullName}</strong>. Keep this QR code available when you arrive at the event.
+          </p>
+
+          <div className={styles.ticket}>
+            <div className={styles.ticketHeader}>
+              <div>
+                <span className={styles.ticketBrand}>DFC EVENT</span>
+                <span className={styles.ticketType}>
+                  {registration.participantType === 'BINUSIAN' ? 'BINUSIAN' : 'Non-BINUSIAN'} pass
+                </span>
+              </div>
+              <span className={styles.ticketStatus}>Confirmed</span>
             </div>
-          )}
-        </div>
-      </div>
+
+            <div className={styles.qrFrame}>
+              <QRCode
+                aria-label={`QR code for registration ${registration.registrationNumber}`}
+                className={styles.qrCode}
+                bgColor="#ffffff"
+                fgColor="#111a3a"
+                level="M"
+                role="img"
+                size={256}
+                value={registration.registrationNumber}
+              />
+            </div>
+
+            <span className={styles.registrationLabel}>Registration number</span>
+            <strong className={styles.registrationNumber}>{registration.registrationNumber}</strong>
+            <p className={styles.scanHint}>Present this code to the event team for scanning.</p>
+
+            <div className={styles.ticketDetails}>
+              <div>
+                <span>Study program</span>
+                <strong>{registration.program}</strong>
+              </div>
+              <div>
+                <span>Email</span>
+                <strong>{registration.email}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.successActions}>
+            <button className={styles.secondaryButton} onClick={copyRegistrationNumber} type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              {copyLabel}
+            </button>
+            <button className={styles.primaryButton} onClick={() => window.print()} type="button">
+              Save / print pass
+            </button>
+          </div>
+          <button className={styles.textButton} onClick={startAnotherRegistration} type="button">
+            Register another participant
+          </button>
+        </section>
+      </main>
     );
   }
 
-  if (checkinDisabled) {
+  if (isRegistrationDisabled) {
     return (
-      <div className={styles.mobileContainer}>
-        <div className={styles.content} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
-          <div className={styles.qrIconBox} style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
+      <main className={styles.pageShell}>
+        <section className={styles.closedCard}>
+          <div className={styles.closedIcon} aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="4" y="10" width="16" height="11" rx="2" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
             </svg>
           </div>
-          <h1 className={styles.headerTitle} style={{ marginTop: '24px' }}>Host sedang mematikan checkin</h1>
-          <p className={styles.headerSubtitle}>Silakan hubungi panitia atau tunggu beberapa saat.</p>
-        </div>
-      </div>
+          <p className={styles.eyebrow}>Registration unavailable</p>
+          <h1>Event registration is currently closed.</h1>
+          <p>Please contact the event team or check this page again later.</p>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div className={styles.mobileContainer}>
-      <div className={styles.content}>
-        <div className={styles.qrIconBox}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
-            <path d="M9 3v4"></path><path d="M15 3v4"></path>
-            <path d="M9 15v4"></path><path d="M15 15v4"></path>
-          </svg>
-        </div>
-        
-        <h1 className={styles.headerTitle}>Welcome to the Event, Please Check In</h1>
-        <p className={styles.headerSubtitle}>Fill in your details below to finalize your registration and appear on the wall.</p>
-
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Registration Number (Optional)</label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              placeholder="e.g. 30123456"
-              value={formData.registrationNumber}
-              onChange={handleRegNumberChange}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Full Name</label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              placeholder="e.g. Alex Johnson"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required 
-              disabled={isLocked}
-              style={{ backgroundColor: isLocked ? '#f3f4f6' : 'transparent', color: isLocked ? '#9ca3af' : 'inherit' }}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label className={styles.label}>Contact Number (WhatsApp/Email)</label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              placeholder="e.g. 08123456789 or email@example.com"
-              value={formData.contact}
-              onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-              required 
-              disabled={isLocked}
-              style={{ backgroundColor: isLocked ? '#f3f4f6' : 'transparent', color: isLocked ? '#9ca3af' : 'inherit' }}
-            />
-          </div>
-
-          <div className={styles.formGroup} style={{ marginTop: '8px' }}>
-            <label className={styles.label}>Select Your Major Interest</label>
-            <div className={styles.majorSelection}>
-              
-              <div 
-                className={`${styles.majorCard} ${formData.major === 'Computer Science' ? styles.active : ''}`}
-                onClick={() => !isLocked && setFormData({ ...formData, major: 'Computer Science' })}
-                style={{ opacity: isLocked && formData.major !== 'Computer Science' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
-              >
-                <div className={`${styles.majorIcon} ${styles.iconCS}`}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="4" y="4" width="16" height="12" rx="2" ry="2"></rect>
-                    <rect x="9" y="20" width="6" height="2"></rect>
-                    <line x1="12" y1="16" x2="12" y2="20"></line>
-                  </svg>
-                </div>
-                <div className={styles.majorText}>
-                  <span className={styles.majorTitle}>Computer Science</span>
-                  <span className={styles.majorDesc}>Technology & Software</span>
-                </div>
-              </div>
-
-              <div 
-                className={`${styles.majorCard} ${formData.major === 'Information Systems' ? styles.active : ''}`}
-                onClick={() => !isLocked && setFormData({ ...formData, major: 'Information Systems' })}
-                style={{ opacity: isLocked && formData.major !== 'Information Systems' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
-              >
-                <div className={`${styles.majorIcon} ${styles.iconIS}`}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-                </div>
-                <div className={styles.majorText}>
-                  <span className={styles.majorTitle}>Information Systems</span>
-                  <span className={styles.majorDesc}>Business & Tech Logic</span>
-                </div>
-              </div>
-
-              <div 
-                className={`${styles.majorCard} ${formData.major === 'Visual Communication Design' ? styles.active : ''}`}
-                onClick={() => !isLocked && setFormData({ ...formData, major: 'Visual Communication Design' })}
-                style={{ opacity: isLocked && formData.major !== 'Visual Communication Design' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
-              >
-                <div className={`${styles.majorIcon} ${styles.iconDKV}`}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="13.5" cy="5.5" r="2.5"></circle>
-                    <circle cx="20.5" cy="11.5" r="2.5"></circle>
-                    <circle cx="17.5" cy="19.5" r="2.5"></circle>
-                    <circle cx="10.5" cy="20.5" r="2.5"></circle>
-                    <path d="M5.1 14c-.6-1.5-1.1-3.2-1.1-4.8 0-4.4 3.6-8.2 8-8.2s8 3.6 8 8-3.6 8-8 8H7.2"></path>
-                  </svg>
-                </div>
-                <div className={styles.majorText}>
-                  <span className={styles.majorTitle}>DKV</span>
-                  <span className={styles.majorDesc}>Visual Communication Design</span>
-                </div>
-              </div>
-
-              <div 
-                className={`${styles.majorCard} ${formData.major === 'Digital Business' ? styles.active : ''}`}
-                onClick={() => !isLocked && setFormData({ ...formData, major: 'Digital Business' })}
-                style={{ opacity: isLocked && formData.major !== 'Digital Business' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
-              >
-                <div className={`${styles.majorIcon} ${styles.iconDB}`}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                  </svg>
-                </div>
-                <div className={styles.majorText}>
-                  <span className={styles.majorTitle}>Digital Business</span>
-                  <span className={styles.majorDesc}>Business & E-Commerce</span>
-                </div>
-              </div>
-
-              <div 
-                className={`${styles.majorCard} ${formData.major === 'International Trade' ? styles.active : ''}`}
-                onClick={() => !isLocked && setFormData({ ...formData, major: 'International Trade' })}
-                style={{ opacity: isLocked && formData.major !== 'International Trade' ? 0.5 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
-              >
-                <div className={`${styles.majorIcon} ${styles.iconIT}`}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="2" y1="12" x2="22" y2="12"></line>
-                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                  </svg>
-                </div>
-                <div className={styles.majorText}>
-                  <span className={styles.majorTitle}>International Trade</span>
-                  <span className={styles.majorDesc}>Global Market Strategy</span>
-                </div>
-              </div>
-
+    <main className={styles.pageShell}>
+      <div className={styles.pageGrid}>
+        <aside className={styles.eventPanel}>
+          <div className={styles.brandMark} aria-hidden="true">DFC</div>
+          <p className={styles.eyebrow}>Event registration</p>
+          <h1>Join the next generation of digital creators.</h1>
+          <p className={styles.eventIntro}>
+            Register your attendance and receive a personal QR event pass in less than two minutes.
+          </p>
+          <div className={styles.eventHighlights}>
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z" /></svg>
+              <span><strong>Fast registration</strong>Your QR pass appears instantly</span>
+            </div>
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
+              <span><strong>Secure details</strong>Stored safely in Supabase</span>
             </div>
           </div>
+          <p className={styles.panelFootnote}>One registration provides one unique DFC event pass.</p>
+        </aside>
 
-          <button type="submit" className={styles.submitBtn} disabled={isLoading}>
-            {isLoading ? 'Checking in...' : 'Complete Check-In'}
-            {!isLoading && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-                <polyline points="12 5 19 12 12 19"></polyline>
-              </svg>
+        <section className={styles.formCard} aria-labelledby="registration-title">
+          <header className={styles.formHeader}>
+            <span className={styles.stepBadge}>Registration form</span>
+            <h2 id="registration-title">Tell us about yourself.</h2>
+            <p>All fields marked with an asterisk (*) are required.</p>
+          </header>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <fieldset className={styles.section}>
+              <legend>Participant category *</legend>
+              <p className={styles.sectionHelp}>Choose the category that matches your current status.</p>
+              <div className={styles.categoryGrid}>
+                <button
+                  aria-pressed={formData.participantType === 'BINUSIAN'}
+                  className={`${styles.categoryCard} ${formData.participantType === 'BINUSIAN' ? styles.categorySelected : ''}`}
+                  onClick={() => chooseParticipantType('BINUSIAN')}
+                  type="button"
+                >
+                  <span className={`${styles.categoryIcon} ${styles.binusianIcon}`} aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="m3 10 9-5 9 5-9 5-9-5Z" /><path d="M7 12.5V17c3 2 7 2 10 0v-4.5M21 10v6" /></svg>
+                  </span>
+                  <span><strong>BINUSIAN</strong><small>Active BINUS University student</small></span>
+                  <span className={styles.selectedCheck} aria-hidden="true">✓</span>
+                </button>
+
+                <button
+                  aria-pressed={formData.participantType === 'NON_BINUSIAN'}
+                  className={`${styles.categoryCard} ${formData.participantType === 'NON_BINUSIAN' ? styles.categorySelected : ''}`}
+                  onClick={() => chooseParticipantType('NON_BINUSIAN')}
+                  type="button"
+                >
+                  <span className={`${styles.categoryIcon} ${styles.guestIcon}`} aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3 20v-2a5 5 0 0 1 10 0v2M16 4a3 3 0 0 1 0 6M17 13a5 5 0 0 1 4 5v2" /></svg>
+                  </span>
+                  <span><strong>Non-BINUSIAN</strong><small>School student, external student, or public</small></span>
+                  <span className={styles.selectedCheck} aria-hidden="true">✓</span>
+                </button>
+              </div>
+            </fieldset>
+
+            {formData.participantType && (
+              <>
+                <fieldset className={styles.section}>
+                  <legend>{formData.participantType === 'BINUSIAN' ? 'Academic identity' : 'Participant identity'}</legend>
+                  <div className={styles.inputGrid}>
+                    <label className={styles.field}>
+                      <span>Full name *</span>
+                      <input
+                        autoComplete="name"
+                        maxLength={100}
+                        onChange={(event) => updateField('fullName', event.target.value)}
+                        placeholder="Enter your full name"
+                        required
+                        type="text"
+                        value={formData.fullName}
+                      />
+                      <small>Use the name shown on your official identification.</small>
+                    </label>
+
+                    {formData.participantType === 'BINUSIAN' ? (
+                      <label className={styles.field}>
+                        <span>BINUSIAN ID (NIM) *</span>
+                        <input
+                          autoComplete="off"
+                          inputMode="numeric"
+                          maxLength={10}
+                          onChange={(event) => updateField('binusianId', event.target.value.replace(/\D/g, ''))}
+                          pattern="[0-9]{10}"
+                          placeholder="Example: 2601234567"
+                          required
+                          type="text"
+                          value={formData.binusianId}
+                        />
+                        <small>Enter your 10-digit active student ID.</small>
+                      </label>
+                    ) : (
+                      <label className={styles.field}>
+                        <span>Institution / school / community *</span>
+                        <input
+                          autoComplete="organization"
+                          maxLength={150}
+                          onChange={(event) => updateField('institution', event.target.value)}
+                          placeholder="Enter your institution"
+                          required
+                          type="text"
+                          value={formData.institution}
+                        />
+                        <small>For example: SMAN 70, university, company, or community.</small>
+                      </label>
+                    )}
+
+                    <label className={styles.field}>
+                      <span>{formData.participantType === 'BINUSIAN' ? 'BINUS email' : 'Active email'} *</span>
+                      <input
+                        autoComplete="email"
+                        maxLength={254}
+                        onChange={(event) => updateField('email', event.target.value)}
+                        placeholder={formData.participantType === 'BINUSIAN' ? 'name@binus.ac.id' : 'name@example.com'}
+                        required
+                        type="email"
+                        value={formData.email}
+                      />
+                      <small>We will use this email for event information.</small>
+                    </label>
+
+                    <label className={styles.field}>
+                      <span>WhatsApp number *</span>
+                      <input
+                        autoComplete="tel"
+                        inputMode="tel"
+                        maxLength={25}
+                        onChange={(event) => updateField('whatsapp', event.target.value)}
+                        pattern="\+?[0-9][0-9 ()-]{7,24}"
+                        placeholder="Example: +62 812 3456 789"
+                        required
+                        type="tel"
+                        value={formData.whatsapp}
+                      />
+                      <small>Use an active number for urgent event updates.</small>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className={styles.section}>
+                  <legend>Study program *</legend>
+                  <p className={styles.sectionHelp}>Choose the program that best matches your interest.</p>
+                  <div className={styles.programGrid}>
+                    {PROGRAMS.map((program) => (
+                      <label
+                        className={`${styles.programCard} ${formData.program === program.name ? styles.programSelected : ''}`}
+                        key={program.name}
+                      >
+                        <input
+                          checked={formData.program === program.name}
+                          name="program"
+                          onChange={() => updateField('program', program.name)}
+                          required
+                          type="radio"
+                          value={program.name}
+                        />
+                        <span className={styles.programCode}>{program.code}</span>
+                        <span className={styles.programText}>
+                          <strong>{program.name}</strong>
+                          <small>{program.description}</small>
+                        </span>
+                        <span className={styles.radioMark} aria-hidden="true" />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <label className={styles.consentRow}>
+                  <input
+                    checked={formData.consent}
+                    onChange={(event) => updateField('consent', event.target.checked)}
+                    required
+                    type="checkbox"
+                  />
+                  <span>
+                    I confirm that the information above is correct and agree that it may be used for event registration and communication. *
+                  </span>
+                </label>
+
+                {errorMessage && (
+                  <div className={styles.errorAlert} role="alert">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 17h.01" /></svg>
+                    {errorMessage}
+                  </div>
+                )}
+
+                <button className={styles.submitButton} disabled={isSubmitting} type="submit">
+                  {isSubmitting ? (
+                    <><span className={styles.spinner} aria-hidden="true" />Creating your pass...</>
+                  ) : (
+                    <>Register and get QR pass<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>
+                  )}
+                </button>
+                <p className={styles.submitNote}>Your unique QR pass will appear immediately after registration.</p>
+              </>
             )}
-          </button>
-        </form>
-
-        <div className={styles.divider}>UNIEVENT MANAGEMENT</div>
-        
-        {/* Placeholder for the hall image */}
-        <div className={styles.heroImage}></div>
-
+          </form>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
