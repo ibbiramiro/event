@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import QRCode from 'react-qr-code';
 import styles from './page.module.css';
@@ -113,9 +114,11 @@ export default function EventRegistrationPage() {
   const [submissionId, setSubmissionId] = useState(createSubmissionId);
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState('Saving registration...');
   const [isRegistrationDisabled, setIsRegistrationDisabled] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [copyLabel, setCopyLabel] = useState('Copy number');
+  const [isRecoveredRegistration, setIsRecoveredRegistration] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -212,16 +215,22 @@ export default function EventRegistrationPage() {
     }
 
     setIsSubmitting(true);
+    setSubmissionMessage('Saving registration...');
+    const progressTimer = window.setTimeout(
+      () => setSubmissionMessage('Verifying your Google Sheets pass...'),
+      2500,
+    );
 
     try {
       const response = await fetch('/api/registrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, idempotencyKey: submissionId }),
+        signal: AbortSignal.timeout(15000),
       });
       const payload = (await response.json()) as {
         registration?: Registration;
-        sheetSync?: { status?: string };
+        sheetSync?: { status?: string; recovered?: boolean };
         error?: string;
       };
 
@@ -229,11 +238,19 @@ export default function EventRegistrationPage() {
         throw new Error(payload.error || 'Registration could not be verified in Google Sheets.');
       }
 
+      setIsRecoveredRegistration(payload.sheetSync.recovered === true);
       setRegistration(payload.registration);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Registration could not be completed.');
+      const message = error instanceof Error && error.name === 'TimeoutError'
+        ? 'Registration verification took too long. Please submit again; your registration number will not be duplicated.'
+        : error instanceof Error
+          ? error.message
+          : 'Registration could not be completed.';
+      setErrorMessage(message);
     } finally {
+      window.clearTimeout(progressTimer);
+      setSubmissionMessage('Saving registration...');
       setIsSubmitting(false);
     }
   };
@@ -254,6 +271,7 @@ export default function EventRegistrationPage() {
     setFormData(EMPTY_FORM);
     setSubmissionId(createSubmissionId());
     setRegistration(null);
+    setIsRecoveredRegistration(false);
     setErrorMessage('');
     setCopyLabel('Copy number');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -266,10 +284,14 @@ export default function EventRegistrationPage() {
           <div className={styles.successMark} aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
           </div>
-          <p className={styles.eyebrow}>Registration successful</p>
-          <h1 id="registration-success-title">Your event pass is ready.</h1>
+          <p className={styles.eyebrow}>
+            {isRecoveredRegistration ? 'Registration found' : 'Registration successful'}
+          </p>
+          <h1 id="registration-success-title">
+            {isRecoveredRegistration ? 'Here is your existing event pass.' : 'Your event pass is ready.'}
+          </h1>
           <p className={styles.successLead}>
-            Welcome, <strong>{registration.fullName}</strong>. Keep this QR code available when you arrive at the event.
+            {isRecoveredRegistration ? 'Welcome back' : 'Welcome'}, <strong>{registration.fullName}</strong>. Keep this QR code available when you arrive at the event.
           </p>
 
           <div className={styles.ticket}>
@@ -353,8 +375,23 @@ export default function EventRegistrationPage() {
       <div className={styles.pageGrid}>
         <aside className={styles.eventPanel}>
           <div className={styles.panelTopline}>
-            <div className={styles.brandMark} aria-hidden="true">DFC</div>
-            <span>DIGIFEST CAMP 2026</span>
+            <div className={styles.brandIdentity}>
+              <span className={styles.brandMark}>
+                <Image
+                  alt=""
+                  className={styles.brandLogo}
+                  height={52}
+                  priority
+                  src="/digifest-logo.svg"
+                  width={52}
+                />
+              </span>
+              <span className={styles.brandCopy}>
+                <strong>DIGIFEST CAMP 2026</strong>
+                <small>Innovation · Technology · Creativity</small>
+              </span>
+            </div>
+            <span className={styles.editionTag}>2026 Edition</span>
           </div>
           <div className={styles.panelContent}>
             <p className={styles.eyebrow}>Official event registration</p>
@@ -503,7 +540,7 @@ export default function EventRegistrationPage() {
                   {errorMessage && <div className={styles.errorAlert} role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 17h.01" /></svg>{errorMessage}</div>}
 
                   <button className={styles.submitButton} disabled={isSubmitting} type="submit">
-                    {isSubmitting ? <><span className={styles.spinner} aria-hidden="true" />Creating your pass...</> : <>Register and get QR pass<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+                    {isSubmitting ? <><span className={styles.spinner} aria-hidden="true" />{submissionMessage}</> : <>Register and get QR pass<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
                   </button>
                   <p className={styles.submitNote}>Free registration · Your QR event pass appears immediately</p>
                 </div>

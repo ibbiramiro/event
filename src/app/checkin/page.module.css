@@ -40,25 +40,75 @@
 .panelTopline {
   display: flex;
   align-items: center;
-  gap: 13px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.11em;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brandIdentity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .brandMark {
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  padding: 5px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.26);
-  border-radius: 14px;
-  color: #fff;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 13px;
+  box-shadow: 0 12px 30px rgba(3, 11, 33, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.brandLogo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 13px;
+  filter: drop-shadow(0 5px 10px rgba(0, 79, 159, 0.18));
+}
+
+.brandCopy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.brandCopy strong {
+  color: #fff;
+  font-size: 12px;
   font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.brandCopy small {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.editionTag {
+  padding: 7px 10px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 8px;
+  font-weight: 800;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
 }
 
 .panelContent {
@@ -960,10 +1010,23 @@
   }
 
   .brandMark {
-    width: 43px;
-    height: 43px;
-    border-radius: 13px;
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    padding: 4px;
+    border-radius: 16px;
+  }
+
+  .brandLogo {
+    border-radius: 12px;
+  }
+
+  .brandCopy strong {
     font-size: 11px;
+  }
+
+  .brandCopy small {
+    font-size: 7px;
   }
 
   .panelContent {
@@ -1024,8 +1087,21 @@
     padding-inline: 18px;
   }
 
-  .panelTopline > span {
-    font-size: 9px;
+  .editionTag {
+    display: none;
+  }
+
+  .brandIdentity {
+    gap: 11px;
+  }
+
+  .brandCopy strong {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .brandCopy small {
+    font-size: 6.5px;
   }
 
   .formCard {

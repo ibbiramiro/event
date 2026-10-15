@@ -65,9 +65,13 @@ function doPost(event) {
   const lock = LockService.getScriptLock();
 
   try {
-    lock.waitLock(15000);
     const payload = parsePayload_(event);
     const sheet = getSheet_();
+
+    if (!lock.tryLock(2500)) {
+      throw new Error('The spreadsheet is busy. Please submit again in a moment.');
+    }
+
     ensureHeaders_(sheet);
 
     switch (String(payload.action || '')) {
@@ -313,11 +317,15 @@ function findRegistrationRow_(sheet, registrationNumber) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return 0;
 
-  const values = sheet.getRange(2, 2, lastRow - 1, 1).getDisplayValues();
-  for (let index = 0; index < values.length; index += 1) {
-    if (String(values[index][0] || '').trim().toUpperCase() === registrationNumber) return index + 2;
-  }
-  return 0;
+  const match = sheet
+    .getRange(2, 2, lastRow - 1, 1)
+    .createTextFinder(registrationNumber)
+    .matchCase(false)
+    .matchEntireCell(true)
+    .useRegularExpression(false)
+    .findNext();
+
+  return match ? match.getRow() : 0;
 }
 
 function renumberRows_(sheet) {

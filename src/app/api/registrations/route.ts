@@ -169,25 +169,13 @@ function getSupabase() {
   });
 }
 
-async function getGoogleAppsScriptUrl(supabase: ServerSupabaseClient) {
-  let scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();
-
-  if (!scriptUrl) {
-    const { data } = await supabase
-      .from('sysapp_config')
-      .select('value')
-      .eq('key', 'web_app_url')
-      .maybeSingle();
-    scriptUrl = typeof data?.value === 'string' ? data.value.trim() : '';
-  }
-
-  if (!scriptUrl) {
-    throw new Error('GOOGLE_APPS_SCRIPT_URL is not configured.');
-  }
+function getGoogleAppsScriptUrl() {
+  const scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();
+  if (!scriptUrl) throw new Error('GOOGLE_APPS_SCRIPT_URL is not configured.');
 
   const url = new URL(scriptUrl);
-  if (url.protocol !== 'https:' || url.hostname !== 'script.google.com') {
-    throw new Error('Google Apps Script URL must be an HTTPS script.google.com deployment URL.');
+  if (url.protocol !== 'https:' || url.hostname !== 'script.google.com' || !url.pathname.endsWith('/exec')) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL must be an HTTPS script.google.com URL ending in /exec.');
   }
 
   return url.toString();
@@ -203,7 +191,7 @@ async function updateSheetSyncState(
     .update(values)
     .eq('id', registrationId);
 
-  if (error) console.error('Unable to update Sheet sync state:', error.message);
+  if (error) throw new Error(`Unable to update Sheet sync state: ${error.message}`);
 }
 
 type AppsScriptReceipt = {
@@ -245,7 +233,7 @@ function validateAppsScriptReceipt(
 }
 
 async function syncRegistrationToSheet(supabase: ServerSupabaseClient, row: RegistrationRow) {
-  const scriptUrl = await getGoogleAppsScriptUrl(supabase);
+  const scriptUrl = getGoogleAppsScriptUrl();
   const expectedSpreadsheetId = getExpectedSpreadsheetId();
   const formData = new URLSearchParams({
     action: 'upsertRegistration',
@@ -264,54 +252,68 @@ async function syncRegistrationToSheet(supabase: ServerSupabaseClient, row: Regi
     createdAt: row.created_at,
   });
 
-  let lastError: Error | null = null;
+  try {
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      body: formData,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    });
+    const responseText = await response.text();
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    if (!response.ok) throw new Error(`Google Apps Script returned HTTP ${response.status}.`);
+
+    let receipt: AppsScriptReceipt;
     try {
-      const response = await fetch(scriptUrl, {
-        method: 'POST',
-        body: formData,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        cache: 'no-store',
-        redirect: 'follow',
-        signal: AbortSignal.timeout(15000),
-      });
-      const responseText = await response.text();
-
-      if (!response.ok) throw new Error(`Google Apps Script returned HTTP ${response.status}.`);
-
-      let receipt: AppsScriptReceipt;
-      try {
-        receipt = JSON.parse(responseText) as AppsScriptReceipt;
-      } catch {
-        throw new Error('Google Apps Script returned an invalid response. Deploy it with access set to Anyone.');
-      }
-
-      validateAppsScriptReceipt(receipt, row, expectedSpreadsheetId);
-
-      await updateSheetSyncState(supabase, row.id, {
-        sheet_synced_at: new Date().toISOString(),
-        sheet_sync_error: null,
-      });
-      return receipt;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown Google Sheets error.');
-      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 400));
+      receipt = JSON.parse(responseText) as AppsScriptReceipt;
+    } catch {
+      throw new Error('Google Apps Script returned an invalid response. Deploy it with access set to Anyone.');
     }
-  }
 
-  await updateSheetSyncState(supabase, row.id, {
-    sheet_synced_at: null,
-    sheet_sync_error: lastError?.message.slice(0, 500) ?? 'Unknown Google Sheets error.',
-  });
-  throw lastError ?? new Error('Google Sheets synchronization failed.');
+    validateAppsScriptReceipt(receipt, row, expectedSpreadsheetId);
+    await updateSheetSyncState(supabase, row.id, {
+      sheet_synced_at: new Date().toISOString(),
+      sheet_sync_error: null,
+    });
+    return receipt;
+  } catch (error) {
+    const syncError = error instanceof Error ? error : new Error('Unknown Google Sheets error.');
+
+    try {
+      await updateSheetSyncState(supabase, row.id, {
+        sheet_synced_at: null,
+        sheet_sync_error: syncError.message.slice(0, 500),
+      });
+    } catch (stateError) {
+      console.error('Unable to persist Google Sheets sync failure:', stateError);
+    }
+
+    throw syncError;
+  }
 }
 
 async function registrationResponse(
   supabase: ServerSupabaseClient,
   row: RegistrationRow,
   successStatus: 200 | 201,
+  reuseVerifiedSync = false,
 ) {
+  if (reuseVerifiedSync && row.sheet_synced_at && !row.sheet_sync_error) {
+    return NextResponse.json(
+      {
+        registration: toResponse(row),
+        sheetSync: {
+          status: 'synced',
+          contractVersion: APPS_SCRIPT_CONTRACT_VERSION,
+          recovered: true,
+        },
+      },
+      { status: successStatus },
+    );
+  }
+
   try {
     const receipt = await syncRegistrationToSheet(supabase, row);
     return NextResponse.json(
@@ -353,7 +355,7 @@ export async function GET() {
   }
 
   try {
-    const scriptUrl = await getGoogleAppsScriptUrl(supabase);
+    const scriptUrl = getGoogleAppsScriptUrl();
     const expectedSpreadsheetId = getExpectedSpreadsheetId();
     const diagnosticsUrl = new URL(scriptUrl);
     diagnosticsUrl.searchParams.set('mode', 'diagnostics');
@@ -422,16 +424,6 @@ export async function POST(request: Request) {
   }
 
   const idempotencyKey = validation.data.idempotency_key;
-  const existingQuery = await supabase
-    .from('event_registrations')
-    .select(SELECTED_COLUMNS)
-    .eq('idempotency_key', idempotencyKey)
-    .maybeSingle();
-
-  if (existingQuery.data) {
-    return registrationResponse(supabase, existingQuery.data as RegistrationRow, 200);
-  }
-
   const { data, error } = await supabase
     .from('event_registrations')
     .insert(validation.data)
@@ -447,11 +439,25 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (retryQuery.data) {
-        return registrationResponse(supabase, retryQuery.data as RegistrationRow, 200);
+        return registrationResponse(supabase, retryQuery.data as RegistrationRow, 200, true);
+      }
+
+      const existingEmailQuery = await supabase
+        .from('event_registrations')
+        .select(SELECTED_COLUMNS)
+        .ilike('email', validation.data.email)
+        .maybeSingle();
+
+      if (existingEmailQuery.error) {
+        console.error('Unable to recover registration by email:', existingEmailQuery.error.message);
+      }
+
+      if (existingEmailQuery.data) {
+        return registrationResponse(supabase, existingEmailQuery.data as RegistrationRow, 200, true);
       }
 
       return NextResponse.json(
-        { error: 'This email address or BINUSIAN ID has already been registered.' },
+        { error: 'This BINUSIAN ID has already been registered with another email address.' },
         { status: 409 },
       );
     }
