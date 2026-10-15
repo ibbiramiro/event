@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const APPS_SCRIPT_CONTRACT_VERSION = 'digifest-registration-v2';
+
 const PROGRAMS = new Set([
   'Computer Science',
   'Visual Communication Design',
@@ -21,6 +23,7 @@ const EVENT_INTERESTS = new Set([
 ]);
 
 type ParticipantType = 'BINUSIAN' | 'NON_BINUSIAN';
+type ServerSupabaseClient = NonNullable<ReturnType<typeof getSupabase>>;
 
 type RegistrationPayload = {
   participantType?: unknown;
@@ -51,10 +54,12 @@ type RegistrationRow = {
   other_interest: string | null;
   attendee_count: number;
   created_at: string;
+  sheet_synced_at: string | null;
+  sheet_sync_error: string | null;
 };
 
 const SELECTED_COLUMNS =
-  'id, registration_number, participant_type, full_name, email, whatsapp, program, binusian_id, institution, event_interests, other_interest, attendee_count, created_at';
+  'id, registration_number, participant_type, full_name, email, whatsapp, program, binusian_id, institution, event_interests, other_interest, attendee_count, created_at, sheet_synced_at, sheet_sync_error';
 
 function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -164,6 +169,235 @@ function getSupabase() {
   });
 }
 
+async function getGoogleAppsScriptUrl(supabase: ServerSupabaseClient) {
+  let scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();
+
+  if (!scriptUrl) {
+    const { data } = await supabase
+      .from('sysapp_config')
+      .select('value')
+      .eq('key', 'web_app_url')
+      .maybeSingle();
+    scriptUrl = typeof data?.value === 'string' ? data.value.trim() : '';
+  }
+
+  if (!scriptUrl) {
+    throw new Error('GOOGLE_APPS_SCRIPT_URL is not configured.');
+  }
+
+  const url = new URL(scriptUrl);
+  if (url.protocol !== 'https:' || url.hostname !== 'script.google.com') {
+    throw new Error('Google Apps Script URL must be an HTTPS script.google.com deployment URL.');
+  }
+
+  return url.toString();
+}
+
+async function updateSheetSyncState(
+  supabase: ServerSupabaseClient,
+  registrationId: string,
+  values: { sheet_synced_at: string | null; sheet_sync_error: string | null },
+) {
+  const { error } = await supabase
+    .from('event_registrations')
+    .update(values)
+    .eq('id', registrationId);
+
+  if (error) console.error('Unable to update Sheet sync state:', error.message);
+}
+
+type AppsScriptReceipt = {
+  status?: string;
+  message?: string;
+  contractVersion?: string;
+  verified?: boolean;
+  registrationNumber?: string;
+  spreadsheetId?: string;
+  sheetId?: string;
+  sheetName?: string;
+  rowNumber?: number;
+  action?: string;
+};
+
+function getExpectedSpreadsheetId() {
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID?.trim();
+  if (!spreadsheetId) throw new Error('GOOGLE_SPREADSHEET_ID is not configured.');
+  return spreadsheetId;
+}
+
+function validateAppsScriptReceipt(
+  receipt: AppsScriptReceipt,
+  row: RegistrationRow,
+  expectedSpreadsheetId: string,
+) {
+  if (receipt.status !== 'success') {
+    throw new Error(receipt.message || 'Google Apps Script could not update the sheet.');
+  }
+  if (receipt.contractVersion !== APPS_SCRIPT_CONTRACT_VERSION) {
+    throw new Error('Google Apps Script is running an outdated deployment. Deploy the latest Code.gs version.');
+  }
+  if (receipt.spreadsheetId !== expectedSpreadsheetId) {
+    throw new Error('Google Apps Script wrote to a different spreadsheet than GOOGLE_SPREADSHEET_ID.');
+  }
+  if (receipt.registrationNumber !== row.registration_number || receipt.verified !== true) {
+    throw new Error(`Google Sheets could not verify registration ${row.registration_number}.`);
+  }
+}
+
+async function syncRegistrationToSheet(supabase: ServerSupabaseClient, row: RegistrationRow) {
+  const scriptUrl = await getGoogleAppsScriptUrl(supabase);
+  const expectedSpreadsheetId = getExpectedSpreadsheetId();
+  const formData = new URLSearchParams({
+    action: 'upsertRegistration',
+    expectedSpreadsheetId,
+    registrationNumber: row.registration_number,
+    participantType: row.participant_type,
+    fullName: row.full_name,
+    email: row.email,
+    whatsapp: row.whatsapp ?? '',
+    program: row.program ?? '',
+    binusianId: row.binusian_id ?? '',
+    institution: row.institution ?? '',
+    eventInterests: JSON.stringify(row.event_interests),
+    otherInterest: row.other_interest ?? '',
+    attendeeCount: String(row.attendee_count),
+    createdAt: row.created_at,
+  });
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetch(scriptUrl, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        cache: 'no-store',
+        redirect: 'follow',
+        signal: AbortSignal.timeout(15000),
+      });
+      const responseText = await response.text();
+
+      if (!response.ok) throw new Error(`Google Apps Script returned HTTP ${response.status}.`);
+
+      let receipt: AppsScriptReceipt;
+      try {
+        receipt = JSON.parse(responseText) as AppsScriptReceipt;
+      } catch {
+        throw new Error('Google Apps Script returned an invalid response. Deploy it with access set to Anyone.');
+      }
+
+      validateAppsScriptReceipt(receipt, row, expectedSpreadsheetId);
+
+      await updateSheetSyncState(supabase, row.id, {
+        sheet_synced_at: new Date().toISOString(),
+        sheet_sync_error: null,
+      });
+      return receipt;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown Google Sheets error.');
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+
+  await updateSheetSyncState(supabase, row.id, {
+    sheet_synced_at: null,
+    sheet_sync_error: lastError?.message.slice(0, 500) ?? 'Unknown Google Sheets error.',
+  });
+  throw lastError ?? new Error('Google Sheets synchronization failed.');
+}
+
+async function registrationResponse(
+  supabase: ServerSupabaseClient,
+  row: RegistrationRow,
+  successStatus: 200 | 201,
+) {
+  try {
+    const receipt = await syncRegistrationToSheet(supabase, row);
+    return NextResponse.json(
+      {
+        registration: toResponse(row),
+        sheetSync: {
+          status: 'synced',
+          contractVersion: receipt.contractVersion,
+          rowNumber: receipt.rowNumber,
+          sheetName: receipt.sheetName,
+        },
+      },
+      { status: successStatus },
+    );
+  } catch (error) {
+    console.error('Google Sheets registration sync failed:', error);
+    return NextResponse.json(
+      {
+        error: 'Your data was saved, but Google Sheets could not be verified. Please submit again to retry the sync.',
+        retryable: true,
+      },
+      { status: 502 },
+    );
+  }
+}
+
+function identifierSuffix(value: string | undefined) {
+  if (!value) return null;
+  return `...${value.slice(-6)}`;
+}
+
+export async function GET() {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return NextResponse.json(
+      { status: 'misconfigured', error: 'Supabase server environment is incomplete.' },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const scriptUrl = await getGoogleAppsScriptUrl(supabase);
+    const expectedSpreadsheetId = getExpectedSpreadsheetId();
+    const diagnosticsUrl = new URL(scriptUrl);
+    diagnosticsUrl.searchParams.set('mode', 'diagnostics');
+
+    const response = await fetch(diagnosticsUrl, {
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000),
+    });
+    const responseText = await response.text();
+    const receipt = JSON.parse(responseText) as AppsScriptReceipt & { rowCount?: number };
+    const contractMatches = receipt.contractVersion === APPS_SCRIPT_CONTRACT_VERSION;
+    const targetMatches = receipt.spreadsheetId === expectedSpreadsheetId;
+    const healthy = response.ok && receipt.status === 'success' && contractMatches && targetMatches;
+
+    return NextResponse.json(
+      {
+        status: healthy ? 'ok' : 'misconfigured',
+        checks: {
+          appsScriptReachable: response.ok && receipt.status === 'success',
+          contractMatches,
+          targetMatches,
+        },
+        target: {
+          expectedSpreadsheetId: identifierSuffix(expectedSpreadsheetId),
+          actualSpreadsheetId: identifierSuffix(receipt.spreadsheetId),
+          sheetName: receipt.sheetName ?? null,
+          rowCount: receipt.rowCount ?? null,
+        },
+        contractVersion: receipt.contractVersion ?? null,
+      },
+      { status: healthy ? 200 : 503 },
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        status: 'misconfigured',
+        error: error instanceof Error ? error.message : 'Unable to diagnose Google Sheets integration.',
+      },
+      { status: 503 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   let body: RegistrationPayload;
 
@@ -195,7 +429,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (existingQuery.data) {
-    return NextResponse.json({ registration: toResponse(existingQuery.data as RegistrationRow) });
+    return registrationResponse(supabase, existingQuery.data as RegistrationRow, 200);
   }
 
   const { data, error } = await supabase
@@ -213,7 +447,7 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (retryQuery.data) {
-        return NextResponse.json({ registration: toResponse(retryQuery.data as RegistrationRow) });
+        return registrationResponse(supabase, retryQuery.data as RegistrationRow, 200);
       }
 
       return NextResponse.json(
@@ -229,5 +463,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ registration: toResponse(data as RegistrationRow) }, { status: 201 });
+  return registrationResponse(supabase, data as RegistrationRow, 201);
 }

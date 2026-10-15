@@ -23,16 +23,20 @@ create table if not exists public.event_registrations (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   checked_in_at timestamptz,
+  sheet_synced_at timestamptz,
+  sheet_sync_error text,
 
   constraint event_registrations_registration_sequence_key unique (registration_sequence),
   constraint event_registrations_registration_number_key unique (registration_number),
   constraint event_registrations_idempotency_key_key unique (idempotency_key)
 );
 
--- Upgrade columns from the previous version without deleting existing registrations.
+-- Upgrade columns from previous versions without deleting existing registrations.
 alter table public.event_registrations add column if not exists event_interests text[] not null default '{}'::text[];
 alter table public.event_registrations add column if not exists other_interest text;
 alter table public.event_registrations add column if not exists attendee_count integer not null default 1;
+alter table public.event_registrations add column if not exists sheet_synced_at timestamptz;
+alter table public.event_registrations add column if not exists sheet_sync_error text;
 alter table public.event_registrations alter column whatsapp drop not null;
 alter table public.event_registrations alter column program drop not null;
 

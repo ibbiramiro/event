@@ -219,10 +219,14 @@ export default function EventRegistrationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, idempotencyKey: submissionId }),
       });
-      const payload = (await response.json()) as { registration?: Registration; error?: string };
+      const payload = (await response.json()) as {
+        registration?: Registration;
+        sheetSync?: { status?: string };
+        error?: string;
+      };
 
-      if (!response.ok || !payload.registration) {
-        throw new Error(payload.error || 'Registration could not be completed.');
+      if (!response.ok || !payload.registration || payload.sheetSync?.status !== 'synced') {
+        throw new Error(payload.error || 'Registration could not be verified in Google Sheets.');
       }
 
       setRegistration(payload.registration);

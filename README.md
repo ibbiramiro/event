@@ -1,45 +1,89 @@
 # Event Master
 
-Next.js event management application with a Supabase-backed public registration page at `/checkin`.
+Next.js event management application with Supabase persistence and verified Google Sheets synchronization for public registration at `/checkin`.
 
 ## Local setup
 
-1. Install dependencies:
+1. Install dependencies with `npm install`.
+2. Run `supabase/schema.sql` in **Supabase Dashboard > SQL Editor**.
+3. Deploy the Google Apps Script by following the steps below.
+4. Copy `.env.example` to `.env.local` and replace every placeholder.
+5. Run `npm run dev`, then open `http://localhost:3000/checkin`.
 
-```powershell
-npm install
+## Connect the existing Google Sheet
+
+The script preserves A–M for the existing dashboard/scanner and adds registration details in N–T:
+
+| Columns | Value |
+|---|---|
+| A–M | Existing number, registration, participant, program, payment, contact, attendance, RSVP, and status fields |
+| N | Participant Type |
+| O | Email |
+| P | BINUSIAN ID |
+| Q | Institution |
+| R | Event Activities |
+| S | Other Interest |
+| T | Registered At |
+
+Setup and recovery steps:
+
+1. Open the exact target Google Sheet and select **Extensions > Apps Script**.
+2. Replace the editor contents with `google-apps-script/Code.gs`.
+3. Keep `SHEET_NAME: 'Sheet1'` and save.
+4. Select `setupSheetHeaders` and click **Run** once. Approve permissions. This stores the target Spreadsheet ID and Sheet ID in Script Properties, so Web App requests can never depend on the active browser tab.
+5. Open the execution log and confirm the returned `spreadsheetId` matches the value between `/d/` and `/edit` in the Google Sheet URL.
+6. Select **Deploy > Manage deployments**, edit the Web App, choose **New version**, then deploy. Saving code alone does not update `/exec`.
+7. Confirm **Execute as: Me** and **Who has access: Anyone**.
+8. Copy the URL ending in `/exec`, not `/dev`.
+9. Set both values in Vercel Production:
+   - `GOOGLE_APPS_SCRIPT_URL`: the exact `/exec` URL.
+   - `GOOGLE_SPREADSHEET_ID`: the value between `/d/` and `/edit` in the target Sheet URL.
+10. Redeploy Vercel after changing environment variables.
+
+After deployment, open:
+
+```text
+https://<your-project>.vercel.app/api/registrations
 ```
 
-2. In Supabase, open **SQL Editor** and run `supabase/schema.sql` once.
-3. Copy `.env.example` to `.env.local` and replace the placeholders with values from **Supabase Dashboard > Project Settings > API**.
-4. Start the local app:
+A correct connection returns HTTP 200 with:
 
-```powershell
-npm run dev
+```json
+{
+  "status": "ok",
+  "checks": {
+    "appsScriptReachable": true,
+    "contractMatches": true,
+    "targetMatches": true
+  }
+}
 ```
 
-Open `http://localhost:3000/checkin`.
+If the endpoint returns `misconfigured`, do not test registration yet. The response identifies whether the Apps Script version is stale or the Spreadsheet ID points to another file.
 
-## Registration data
+## Registration write flow
 
-The registration API assigns concurrency-safe numbers beginning at `DFC001`. The QR code contains only this registration number. BINUSIAN registrations require a 10-digit BINUSIAN ID, an `@binus.ac.id` email address, and a study program; they do not require WhatsApp. Non-BINUSIAN registrations require an institution and WhatsApp number, but no study program. Every participant selects at least one DIGIFEST CAMP 2026 activity and records how many people (1–20) will attend.
+1. Supabase atomically creates the `DFC001+` registration.
+2. The server sends the committed data and expected Spreadsheet ID to Google Apps Script.
+3. Apps Script rejects the request if its stored target does not match that ID.
+4. The script upserts by DFC number, flushes the write, and reads column B back for verification.
+5. The API requires the current contract version, matching Spreadsheet ID, matching registration number, and `verified: true`.
+6. The browser shows the QR pass only when the API also returns `sheetSync.status: synced`.
 
-`supabase/schema.sql` is also an idempotent upgrade script. If the previous schema is already installed, run the complete updated file again to add `event_interests`, `other_interest`, and `attendee_count`, and to apply the new conditional fields.
+The Apps Script continues supporting `GET`, `create`, `payment`, `checkin`, and `remove` for CRM, guest list, and scanner compatibility.
 
-The browser never receives the Supabase service-role key. Registrations are submitted to the server-only `/api/registrations` Route Handler, while Row Level Security blocks direct anonymous access to the table.
+## Environment variables
 
-## Deploy to Vercel
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/s/your-deployment-id/exec
+GOOGLE_SPREADSHEET_ID=your-google-spreadsheet-id
+```
 
-1. Push this repository to GitHub, GitLab, or Bitbucket.
-2. Import the repository at [Vercel](https://vercel.com/new). Vercel detects Next.js automatically; no `vercel.json` is required.
-3. Under **Project Settings > Environment Variables**, add these values for Production (and Preview if needed):
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` while the existing admin features still use them.
-4. Confirm that `supabase/schema.sql` has already been applied to the same Supabase project.
-5. Deploy. The public registration URL will be `https://<your-project>.vercel.app/checkin`.
-
-Never expose `SUPABASE_SERVICE_ROLE_KEY` with a `NEXT_PUBLIC_` prefix or commit `.env.local`.
+Keep `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_APPS_SCRIPT_URL`, and `GOOGLE_SPREADSHEET_ID` server-side. Add all values to the correct Vercel environment (Production versus Preview), then redeploy.
 
 ## Validation
 
