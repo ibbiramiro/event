@@ -11,6 +11,15 @@ const PROGRAMS = new Set([
   'International Trade',
 ]);
 
+const EVENT_INTERESTS = new Set([
+  'SEMINAR_TALKSHOW',
+  'BAZAAR',
+  'BOOTH_EXHIBITION',
+  'NETWORKING',
+  'FULL_EVENT',
+  'OTHER',
+]);
+
 type ParticipantType = 'BINUSIAN' | 'NON_BINUSIAN';
 
 type RegistrationPayload = {
@@ -21,6 +30,9 @@ type RegistrationPayload = {
   program?: unknown;
   binusianId?: unknown;
   institution?: unknown;
+  eventInterests?: unknown;
+  otherInterest?: unknown;
+  attendeeCount?: unknown;
   consent?: unknown;
   idempotencyKey?: unknown;
 };
@@ -31,15 +43,18 @@ type RegistrationRow = {
   participant_type: ParticipantType;
   full_name: string;
   email: string;
-  whatsapp: string;
-  program: string;
+  whatsapp: string | null;
+  program: string | null;
   binusian_id: string | null;
   institution: string | null;
+  event_interests: string[];
+  other_interest: string | null;
+  attendee_count: number;
   created_at: string;
 };
 
 const SELECTED_COLUMNS =
-  'id, registration_number, participant_type, full_name, email, whatsapp, program, binusian_id, institution, created_at';
+  'id, registration_number, participant_type, full_name, email, whatsapp, program, binusian_id, institution, event_interests, other_interest, attendee_count, created_at';
 
 function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -56,6 +71,9 @@ function toResponse(row: RegistrationRow) {
     program: row.program,
     binusianId: row.binusian_id,
     institution: row.institution,
+    eventInterests: row.event_interests,
+    otherInterest: row.other_interest,
+    attendeeCount: row.attendee_count,
     createdAt: row.created_at,
   };
 }
@@ -68,7 +86,12 @@ function validate(body: RegistrationPayload) {
   const program = text(body.program);
   const binusianId = text(body.binusianId);
   const institution = text(body.institution).replace(/\s+/g, ' ');
+  const otherInterest = text(body.otherInterest).replace(/\s+/g, ' ');
+  const attendeeCount = Number(body.attendeeCount);
   const idempotencyKey = text(body.idempotencyKey);
+  const eventInterests = Array.isArray(body.eventInterests)
+    ? [...new Set(body.eventInterests.filter((item): item is string => typeof item === 'string'))]
+    : [];
 
   if (participantType !== 'BINUSIAN' && participantType !== 'NON_BINUSIAN') {
     return { error: 'Choose a participant category.' } as const;
@@ -79,20 +102,33 @@ function validate(body: RegistrationPayload) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
     return { error: 'Enter a valid email address.' } as const;
   }
-  if (participantType === 'BINUSIAN' && !email.endsWith('@binus.ac.id')) {
-    return { error: 'BINUSIAN participants must use an @binus.ac.id email address.' } as const;
+  if (participantType === 'BINUSIAN') {
+    if (!email.endsWith('@binus.ac.id')) {
+      return { error: 'BINUSIAN participants must use an @binus.ac.id email address.' } as const;
+    }
+    if (!/^\d{10}$/.test(binusianId)) {
+      return { error: 'BINUSIAN ID must contain exactly 10 digits.' } as const;
+    }
+    if (!PROGRAMS.has(program)) {
+      return { error: 'Choose one of the available study programs.' } as const;
+    }
   }
-  if (!/^\+?[0-9][0-9 ()-]{7,24}$/.test(whatsapp)) {
-    return { error: 'Enter a valid WhatsApp number.' } as const;
+  if (participantType === 'NON_BINUSIAN') {
+    if (institution.length < 2 || institution.length > 150) {
+      return { error: 'Institution must contain 2 to 150 characters.' } as const;
+    }
+    if (!/^\+?[0-9][0-9 ()-]{7,24}$/.test(whatsapp)) {
+      return { error: 'Enter a valid WhatsApp number.' } as const;
+    }
   }
-  if (!PROGRAMS.has(program)) {
-    return { error: 'Choose one of the available study programs.' } as const;
+  if (eventInterests.length === 0 || eventInterests.some((interest) => !EVENT_INTERESTS.has(interest))) {
+    return { error: 'Choose at least one valid DIGIFEST CAMP 2026 activity.' } as const;
   }
-  if (participantType === 'BINUSIAN' && !/^\d{10}$/.test(binusianId)) {
-    return { error: 'BINUSIAN ID must contain exactly 10 digits.' } as const;
+  if (eventInterests.includes('OTHER') && (otherInterest.length < 2 || otherInterest.length > 200)) {
+    return { error: 'Describe your other event interest using 2 to 200 characters.' } as const;
   }
-  if (participantType === 'NON_BINUSIAN' && (institution.length < 2 || institution.length > 150)) {
-    return { error: 'Institution must contain 2 to 150 characters.' } as const;
+  if (!Number.isInteger(attendeeCount) || attendeeCount < 1 || attendeeCount > 20) {
+    return { error: 'Attendee count must be between 1 and 20.' } as const;
   }
   if (body.consent !== true) {
     return { error: 'You must agree to the registration terms.' } as const;
@@ -106,10 +142,13 @@ function validate(body: RegistrationPayload) {
       participant_type: participantType,
       full_name: fullName,
       email,
-      whatsapp,
-      program,
+      whatsapp: participantType === 'NON_BINUSIAN' ? whatsapp : null,
+      program: participantType === 'BINUSIAN' ? program : null,
       binusian_id: participantType === 'BINUSIAN' ? binusianId : null,
       institution: participantType === 'NON_BINUSIAN' ? institution : null,
+      event_interests: eventInterests,
+      other_interest: eventInterests.includes('OTHER') ? otherInterest : null,
+      attendee_count: attendeeCount,
       idempotency_key: idempotencyKey,
     },
   } as const;
@@ -118,7 +157,6 @@ function validate(body: RegistrationPayload) {
 function getSupabase() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
   if (!url || !serviceRoleKey) return null;
 
   return createClient(url, serviceRoleKey, {
@@ -191,8 +229,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    { registration: toResponse(data as RegistrationRow) },
-    { status: 201 },
-  );
+  return NextResponse.json({ registration: toResponse(data as RegistrationRow) }, { status: 201 });
 }

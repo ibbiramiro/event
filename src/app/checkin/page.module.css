@@ -1,140 +1,169 @@
 .pageShell {
+  --navy: #15203e;
+  --orange: #f36b2d;
+  --blue: #2f6298;
   min-height: 100vh;
-  padding: 32px;
-  color: #17203a;
+  padding: 28px;
+  color: var(--navy);
   background:
-    radial-gradient(circle at 8% 8%, rgba(255, 111, 40, 0.12), transparent 28%),
-    radial-gradient(circle at 92% 16%, rgba(52, 112, 183, 0.13), transparent 25%),
-    #f6f7fb;
+    radial-gradient(circle at 5% 6%, rgba(243, 107, 45, 0.1), transparent 28%),
+    radial-gradient(circle at 95% 12%, rgba(47, 98, 152, 0.11), transparent 25%),
+    #f4f6fa;
 }
 
 .pageGrid {
   width: min(1180px, 100%);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(280px, 0.74fr) minmax(0, 1.5fr);
+  grid-template-columns: minmax(300px, 0.76fr) minmax(0, 1.5fr);
   align-items: start;
-  border: 1px solid #e6e8f0;
-  border-radius: 28px;
   overflow: hidden;
+  border: 1px solid #e3e7ef;
+  border-radius: 28px;
   background: #fff;
-  box-shadow: 0 24px 70px rgba(27, 36, 68, 0.1);
+  box-shadow: 0 26px 70px rgba(22, 31, 61, 0.1);
 }
 
 .eventPanel {
   position: sticky;
   top: 0;
-  min-height: calc(100vh - 64px);
-  padding: 52px 42px;
+  min-height: calc(100vh - 56px);
+  padding: 38px;
   display: flex;
   flex-direction: column;
   color: #fff;
   background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 35%),
-    linear-gradient(145deg, #121b40 0%, #1f376b 62%, #285e91 100%);
+    radial-gradient(circle at 100% 0, rgba(95, 158, 215, 0.35), transparent 34%),
+    linear-gradient(150deg, #101933 0%, #1c3567 66%, #285f8e 100%);
+}
+
+.panelTopline {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
 }
 
 .brandMark {
-  width: 58px;
-  height: 58px;
-  margin-bottom: 52px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 14px;
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 850;
   letter-spacing: 0.08em;
+}
+
+.panelContent {
+  margin: auto 0;
+  padding: 70px 0;
 }
 
 .eyebrow {
   margin: 0 0 12px;
-  color: #f56f31;
-  font-size: 12px;
-  font-weight: 800;
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 850;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .eventPanel h1 {
+  max-width: 400px;
   margin: 0;
-  max-width: 390px;
   color: #fff;
-  font-size: clamp(30px, 3vw, 46px);
+  font-size: clamp(31px, 3.1vw, 46px);
   line-height: 1.08;
   letter-spacing: -0.04em;
 }
 
 .eventIntro {
-  margin: 22px 0 0;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 15px;
+  max-width: 390px;
+  margin: 20px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
   line-height: 1.75;
 }
 
 .eventHighlights {
-  margin-top: 44px;
+  margin-top: 42px;
   display: grid;
-  gap: 22px;
+  gap: 19px;
 }
 
 .eventHighlights > div {
   display: flex;
   align-items: flex-start;
-  gap: 13px;
+  gap: 12px;
 }
 
-.eventHighlights svg {
-  width: 22px;
-  flex: 0 0 22px;
-  fill: none;
-  stroke: #ff8b51;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.highlightNumber {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  color: #ff9b6d;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 9px;
+  font-weight: 850;
 }
 
-.eventHighlights span {
-  color: rgba(255, 255, 255, 0.67);
-  font-size: 13px;
-  line-height: 1.5;
+.eventHighlights > div > span:last-child {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .eventHighlights strong {
   display: block;
   margin-bottom: 2px;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .panelFootnote {
-  margin: auto 0 0;
-  padding-top: 50px;
-  color: rgba(255, 255, 255, 0.48);
-  font-size: 12px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.43);
+  font-size: 10px;
 }
 
 .formCard {
   min-width: 0;
-  padding: 52px clamp(30px, 5vw, 66px) 62px;
+  padding: 48px clamp(30px, 5vw, 64px) 58px;
 }
 
 .formHeader {
-  padding-bottom: 32px;
-  border-bottom: 1px solid #eaecf2;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e9ecf2;
+}
+
+.headerMeta {
+  margin-bottom: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #9a9eaa;
+  font-size: 10px;
 }
 
 .stepBadge {
   display: inline-flex;
-  margin-bottom: 13px;
   padding: 6px 10px;
   border-radius: 999px;
-  color: #b94716;
-  background: #fff1e9;
-  font-size: 11px;
-  font-weight: 800;
+  color: #b54b1e;
+  background: #fff0e7;
+  font-size: 10px;
+  font-weight: 850;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -143,21 +172,22 @@
 .successCard h1,
 .closedCard h1 {
   margin: 0;
-  color: #17203a;
-  font-size: clamp(27px, 4vw, 38px);
+  color: var(--navy);
+  font-size: clamp(28px, 4vw, 38px);
   line-height: 1.15;
   letter-spacing: -0.035em;
 }
 
-.formHeader p {
+.formHeader > p {
   margin: 10px 0 0;
-  color: #747b8f;
-  font-size: 14px;
+  color: #777f91;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .form {
   display: grid;
-  gap: 34px;
+  gap: 36px;
   padding-top: 34px;
 }
 
@@ -168,72 +198,90 @@
   border: 0;
 }
 
-.section legend {
-  padding: 0;
-  color: #17203a;
-  font-size: 18px;
-  font-weight: 750;
+.sectionHeading {
+  margin-bottom: 17px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.sectionHelp {
-  margin: 6px 0 16px;
-  color: #7b8192;
-  font-size: 13px;
-  line-height: 1.5;
+.sectionNumber {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #b84b1c;
+  background: #fff0e7;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.sectionHeading > div {
+  min-width: 0;
+}
+
+.sectionHeading legend {
+  padding: 0;
+  color: #222c47;
+  font-size: 17px;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.sectionHeading p {
+  margin: 4px 0 0;
+  color: #858b9b;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .categoryGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .categoryCard {
   position: relative;
   min-width: 0;
-  padding: 18px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 13px;
-  border: 1px solid #e3e6ef;
-  border-radius: 16px;
+  gap: 12px;
+  border: 1px solid #e1e5ed;
+  border-radius: 15px;
+  color: var(--navy);
   text-align: left;
-  color: #17203a;
   background: #fff;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
 .categoryCard:hover {
-  border-color: #b8c1d5;
+  border-color: #b9c3d4;
   transform: translateY(-1px);
 }
 
-.categoryCard:focus-visible,
-.programCard:has(input:focus-visible),
-.field input:focus-visible,
-.consentRow:has(input:focus-visible) {
-  outline: 3px solid rgba(46, 103, 172, 0.22);
-  outline-offset: 2px;
-}
-
 .categorySelected {
-  border-color: #f47739;
+  border-color: #f07940;
   background: #fff8f4;
-  box-shadow: 0 8px 24px rgba(235, 100, 37, 0.1);
+  box-shadow: 0 8px 24px rgba(225, 91, 30, 0.09);
 }
 
 .categoryIcon {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: 12px;
 }
 
-.categoryIcon svg {
-  width: 23px;
+.categoryIcon svg,
+.attendeeIcon svg {
+  width: 22px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -242,13 +290,13 @@
 }
 
 .binusianIcon {
-  color: #ee6828;
-  background: #ffe8dd;
+  color: #e75f22;
+  background: #ffe9de;
 }
 
 .guestIcon {
-  color: #316595;
-  background: #e7f1fc;
+  color: #2d6398;
+  background: #e8f1fb;
 }
 
 .categoryCard > span:nth-child(2) {
@@ -258,219 +306,340 @@
 }
 
 .categoryCard strong {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .categoryCard small {
-  color: #777d8f;
-  font-size: 11px;
+  padding-right: 10px;
+  color: #7e8494;
+  font-size: 10px;
   line-height: 1.4;
 }
 
 .selectedCheck {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 21px;
-  height: 21px;
+  top: 10px;
+  right: 10px;
+  width: 19px;
+  height: 19px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   color: transparent;
   background: transparent;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 900;
 }
 
 .categorySelected .selectedCheck {
   color: #fff;
-  background: #f47739;
+  background: var(--orange);
 }
 
 .inputGrid {
-  margin-top: 17px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
+  gap: 19px 14px;
 }
 
 .field {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .field > span {
-  color: #282f46;
-  font-size: 13px;
-  font-weight: 700;
+  color: #313950;
+  font-size: 12px;
+  font-weight: 720;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   min-width: 0;
-  height: 49px;
-  padding: 0 14px;
-  border: 1px solid #dfe2ea;
-  border-radius: 11px;
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #dfe3eb;
+  border-radius: 10px;
   outline: none;
-  color: #17203a;
+  color: var(--navy);
   background: #fff;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.field input::placeholder {
-  color: #a6a9b4;
+.field select {
+  cursor: pointer;
 }
 
-.field input:focus {
-  border-color: #4579ad;
-  box-shadow: 0 0 0 4px rgba(69, 121, 173, 0.09);
+.field input::placeholder {
+  color: #a8acb7;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #477cac;
+  box-shadow: 0 0 0 4px rgba(71, 124, 172, 0.09);
 }
 
 .field small {
-  color: #8a8f9e;
-  font-size: 10px;
+  color: #9095a2;
+  font-size: 9px;
   line-height: 1.45;
 }
 
-.programGrid {
+.activityGrid {
+  padding: 12px;
   display: grid;
-  gap: 10px;
+  gap: 9px;
+  border-radius: 18px;
+  background: #f7f8fc;
 }
 
-.programCard {
+.activityCard {
   position: relative;
-  padding: 14px 16px;
+  min-width: 0;
+  padding: 14px;
   display: flex;
-  align-items: center;
-  gap: 13px;
-  border: 1px solid #e3e6ed;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid #e4e7ef;
   border-radius: 13px;
   background: #fff;
+  box-shadow: 0 2px 6px rgba(29, 38, 67, 0.025);
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.programCard:hover {
-  border-color: #b7c1d2;
+.activityCard:hover {
+  border-color: #bdc7d7;
+  transform: translateY(-1px);
 }
 
-.programSelected {
-  border-color: #3f6f9e;
-  background: #f5f9fd;
+.activitySelected {
+  border-color: #f27a42;
+  background: #fffaf7;
+  box-shadow: 0 7px 20px rgba(225, 91, 30, 0.07);
 }
 
-.programCard input {
+.activityCard > input {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
 }
 
-.programCode {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+.checkMark {
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  flex: 0 0 19px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
-  color: #325f91;
-  background: #e9f2fc;
+  border: 1.5px solid #b8beca;
+  border-radius: 5px;
+  color: transparent;
+  background: #fff;
   font-size: 11px;
-  font-weight: 850;
-  letter-spacing: -0.02em;
+  font-weight: 900;
 }
 
-.programCard:nth-child(2) .programCode {
-  color: #a04c2c;
-  background: #fff0e7;
+.activitySelected .checkMark {
+  border-color: var(--orange);
+  color: #fff;
+  background: var(--orange);
 }
 
-.programCard:nth-child(3) .programCode {
-  color: #6d51a1;
-  background: #f0eafd;
+.activityContent {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
 }
 
-.programCard:nth-child(4) .programCode {
-  color: #17775f;
-  background: #e3f7f0;
+.activityTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
-.programCard:nth-child(5) .programCode {
-  color: #a64d71;
-  background: #faeaf1;
+.activityTitleRow strong {
+  color: #2a334c;
+  font-size: 12px;
 }
 
-.programText {
+.activityTitleRow em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #3d6f9e;
+  background: #e8f2fc;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.activityCard:nth-child(2) em {
+  color: #a34d2d;
+  background: #ffeadf;
+}
+
+.activityCard:nth-child(5) em {
+  color: #17805e;
+  background: #dff7ed;
+}
+
+.activityContent > small {
+  color: #7d8392;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.otherField {
+  margin-top: 13px;
+}
+
+.attendeeCard {
+  min-height: 80px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid #e2e6ee;
+  border-radius: 15px;
+  background: #fafbfc;
+}
+
+.attendeeIcon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #326697;
+  background: #e8f2fc;
+}
+
+.attendeeCopy {
   min-width: 0;
   display: grid;
   gap: 3px;
 }
 
-.programText strong {
-  color: #252d45;
-  font-size: 13px;
+.attendeeCopy strong {
+  color: #303950;
+  font-size: 12px;
 }
 
-.programText small {
-  color: #848999;
-  font-size: 10px;
-  line-height: 1.35;
+.attendeeCopy small {
+  color: #8b909d;
+  font-size: 9px;
 }
 
-.radioMark {
-  width: 19px;
-  height: 19px;
+.counter {
   margin-left: auto;
-  flex: 0 0 19px;
-  border: 1.5px solid #bfc5d1;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 4px #fff;
+  display: grid;
+  grid-template-columns: 36px 48px 36px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #d8dde7;
+  border-radius: 10px;
+  background: #fff;
 }
 
-.programSelected .radioMark {
-  border-color: #356b9f;
-  background: #356b9f;
+.counter button,
+.counter input {
+  height: 38px;
+  border: 0;
+  color: #25304a;
+  text-align: center;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.counter button {
+  cursor: pointer;
+}
+
+.counter button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--blue);
+}
+
+.counter button:disabled {
+  color: #c6cad2;
+  cursor: not-allowed;
+}
+
+.counter input {
+  width: 48px;
+  border-right: 1px solid #e5e8ee;
+  border-left: 1px solid #e5e8ee;
+  outline: none;
+  appearance: textfield;
+}
+
+.counter input::-webkit-inner-spin-button,
+.counter input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.formFooter {
+  padding-top: 26px;
+  display: grid;
+  gap: 17px;
+  border-top: 1px solid #e8ebf1;
 }
 
 .consentRow {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  color: #62697b;
-  font-size: 12px;
+  gap: 11px;
+  color: #656d7e;
+  font-size: 11px;
   line-height: 1.55;
   cursor: pointer;
 }
 
 .consentRow input {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   margin: 1px 0 0;
-  flex: 0 0 18px;
-  accent-color: #f36f2f;
+  flex: 0 0 17px;
+  accent-color: var(--orange);
+}
+
+.categoryCard:focus-visible,
+.activityCard:has(input:focus-visible),
+.field input:focus-visible,
+.field select:focus-visible,
+.consentRow:has(input:focus-visible),
+.counter button:focus-visible {
+  outline: 3px solid rgba(47, 98, 152, 0.2);
+  outline-offset: 2px;
 }
 
 .errorAlert {
-  margin-top: -12px;
-  padding: 12px 14px;
+  padding: 11px 13px;
   display: flex;
   align-items: center;
   gap: 9px;
-  border: 1px solid #f2c5c5;
-  border-radius: 11px;
-  color: #a93434;
+  border: 1px solid #f0c6c6;
+  border-radius: 10px;
+  color: #a63333;
   background: #fff6f6;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
 .errorAlert svg {
-  width: 18px;
-  flex: 0 0 18px;
+  width: 17px;
+  flex: 0 0 17px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -480,16 +649,16 @@
 .submitButton,
 .primaryButton,
 .secondaryButton {
-  min-height: 51px;
+  min-height: 50px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 11px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 9px;
   font: inherit;
-  font-size: 14px;
-  font-weight: 750;
+  font-size: 13px;
+  font-weight: 760;
   cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
@@ -497,24 +666,24 @@
 .submitButton,
 .primaryButton {
   color: #fff;
-  background: linear-gradient(135deg, #f77738, #e9581d);
-  box-shadow: 0 12px 26px rgba(226, 82, 24, 0.2);
+  background: linear-gradient(135deg, #f47a3d, #e95b20);
+  box-shadow: 0 11px 24px rgba(226, 82, 24, 0.2);
 }
 
 .submitButton:hover:not(:disabled),
 .primaryButton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 15px 30px rgba(226, 82, 24, 0.25);
+  box-shadow: 0 14px 28px rgba(226, 82, 24, 0.25);
 }
 
 .submitButton:disabled {
-  cursor: wait;
   opacity: 0.7;
+  cursor: wait;
 }
 
 .submitButton svg,
 .secondaryButton svg {
-  width: 18px;
+  width: 17px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -523,8 +692,8 @@
 }
 
 .spinner {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: #fff;
   border-radius: 50%;
@@ -536,43 +705,43 @@
 }
 
 .submitNote {
-  margin: -24px 0 0;
-  color: #9296a3;
+  margin: -8px 0 0;
+  color: #979ba7;
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .successCard,
 .closedCard {
   width: min(620px, 100%);
   margin: 0 auto;
-  padding: clamp(28px, 6vw, 54px);
-  border: 1px solid #e6e8ef;
-  border-radius: 28px;
+  padding: clamp(28px, 6vw, 52px);
+  border: 1px solid #e4e8ef;
+  border-radius: 26px;
   text-align: center;
   background: #fff;
-  box-shadow: 0 24px 70px rgba(27, 36, 68, 0.11);
+  box-shadow: 0 24px 68px rgba(24, 33, 62, 0.11);
 }
 
 .successMark,
 .closedIcon {
-  width: 66px;
-  height: 66px;
-  margin: 0 auto 22px;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 21px;
   display: grid;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 19px;
 }
 
 .successMark {
   color: #fff;
   background: linear-gradient(145deg, #25aa7a, #168d63);
-  box-shadow: 0 12px 25px rgba(22, 141, 99, 0.22);
+  box-shadow: 0 12px 24px rgba(22, 141, 99, 0.22);
 }
 
 .successMark svg,
 .closedIcon svg {
-  width: 34px;
+  width: 33px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.3;
@@ -581,10 +750,10 @@
 }
 
 .successLead {
-  margin: 13px auto 28px;
   max-width: 470px;
+  margin: 13px auto 27px;
   color: #747b8e;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.65;
 }
 
@@ -594,22 +763,20 @@
 
 .ticket {
   position: relative;
-  padding: 24px;
+  padding: 23px;
   overflow: hidden;
   border: 1px solid #dfe3ed;
-  border-radius: 21px;
-  background:
-    linear-gradient(135deg, rgba(255, 112, 45, 0.06), transparent 35%),
-    #fbfcff;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 112, 45, 0.06), transparent 35%), #fbfcff;
 }
 
 .ticket::before,
 .ticket::after {
   content: '';
   position: absolute;
-  top: 100px;
-  width: 22px;
-  height: 22px;
+  top: 98px;
+  width: 21px;
+  height: 21px;
   border: 1px solid #dfe3ed;
   border-radius: 50%;
   background: #fff;
@@ -619,7 +786,7 @@
 .ticket::after { right: -12px; }
 
 .ticketHeader {
-  padding-bottom: 20px;
+  padding-bottom: 18px;
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -633,15 +800,15 @@
 }
 
 .ticketBrand {
-  color: #17203a;
-  font-size: 13px;
+  color: var(--navy);
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .ticketType {
   color: #858a99;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .ticketStatus {
@@ -650,19 +817,19 @@
   border-radius: 999px;
   color: #177557;
   background: #e4f6ef;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .qrFrame {
-  width: min(256px, 82vw);
-  margin: 24px auto 18px;
-  padding: 14px;
+  width: min(256px, 78vw);
+  margin: 23px auto 17px;
+  padding: 13px;
   border: 1px solid #e3e6ed;
-  border-radius: 16px;
+  border-radius: 15px;
   background: #fff;
-  box-shadow: 0 10px 28px rgba(20, 31, 66, 0.08);
+  box-shadow: 0 10px 27px rgba(20, 31, 66, 0.08);
 }
 
 .qrCode {
@@ -674,32 +841,32 @@
 .registrationLabel {
   display: block;
   color: #858a98;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.05em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .registrationNumber {
   display: block;
   margin-top: 3px;
-  color: #17203a;
-  font-size: clamp(28px, 9vw, 42px);
+  color: var(--navy);
+  font-size: clamp(28px, 9vw, 41px);
   line-height: 1.1;
   letter-spacing: 0.08em;
 }
 
 .scanHint {
-  margin: 8px 0 22px;
+  margin: 7px 0 20px;
   color: #8a8f9e;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .ticketDetails {
-  padding-top: 18px;
+  padding-top: 17px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 15px;
   border-top: 1px dashed #ccd2df;
   text-align: left;
 }
@@ -712,21 +879,21 @@
 
 .ticketDetails span {
   color: #9195a2;
-  font-size: 9px;
+  font-size: 8px;
   text-transform: uppercase;
 }
 
 .ticketDetails strong {
   overflow-wrap: anywhere;
   color: #30384e;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .successActions {
-  margin-top: 20px;
+  margin-top: 19px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 9px;
 }
 
 .secondaryButton {
@@ -740,12 +907,12 @@
 }
 
 .textButton {
-  margin-top: 17px;
+  margin-top: 16px;
   border: 0;
   color: #667087;
   background: transparent;
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
   text-decoration: underline;
@@ -764,14 +931,14 @@
 .closedCard > p:last-child {
   margin: 13px 0 0;
   color: #747b8e;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
 @media (max-width: 840px) {
   .pageShell {
     padding: 0;
-    background: #fff;
+    background: #eef2f7;
   }
 
   .pageGrid {
@@ -779,42 +946,53 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    background: transparent;
   }
 
   .eventPanel {
     position: relative;
-    min-height: auto;
-    padding: 30px 24px 34px;
+    min-height: 260px;
+    padding: 22px 22px 52px;
+  }
+
+  .panelTopline {
+    justify-content: space-between;
   }
 
   .brandMark {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 30px;
-    border-radius: 14px;
-    font-size: 13px;
+    width: 43px;
+    height: 43px;
+    border-radius: 13px;
+    font-size: 11px;
+  }
+
+  .panelContent {
+    margin: 35px 0 0;
+    padding: 0;
   }
 
   .eventPanel h1 {
     max-width: 600px;
-    font-size: clamp(29px, 8vw, 40px);
+    font-size: clamp(28px, 7.8vw, 38px);
   }
 
   .eventIntro {
     max-width: 620px;
-    font-size: 14px;
+    margin-top: 13px;
   }
 
-  .eventHighlights {
-    display: none;
-  }
-
+  .eventHighlights,
   .panelFootnote {
     display: none;
   }
 
   .formCard {
-    padding: 34px 24px 48px;
+    position: relative;
+    z-index: 2;
+    margin-top: -24px;
+    padding: 31px 22px 48px;
+    border-radius: 24px 24px 0 0;
+    background: #fff;
   }
 
   .successCard,
@@ -841,64 +1019,132 @@
     grid-template-columns: 1fr;
   }
 
-  .formCard {
+  .eventPanel {
+    min-height: 248px;
     padding-inline: 18px;
   }
 
+  .panelTopline > span {
+    font-size: 9px;
+  }
+
+  .formCard {
+    padding: 29px 16px 42px;
+  }
+
   .formHeader {
-    padding-bottom: 26px;
+    padding-bottom: 25px;
+  }
+
+  .headerMeta > span:last-child {
+    display: none;
   }
 
   .form {
-    gap: 30px;
-    padding-top: 30px;
+    gap: 32px;
+    padding-top: 29px;
+  }
+
+  .sectionHeading {
+    margin-bottom: 14px;
+  }
+
+  .sectionHeading legend {
+    font-size: 15px;
   }
 
   .categoryCard {
-    padding: 15px;
+    min-height: 74px;
+    padding: 14px;
   }
 
-  .programCard {
-    padding: 13px;
+  .activityGrid {
+    margin-inline: -3px;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 15px;
+  }
+
+  .activityCard {
+    padding: 13px 11px;
+  }
+
+  .activityTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .activityContent > small {
+    font-size: 9px;
+  }
+
+  .attendeeCard {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .attendeeCopy {
+    padding-top: 4px;
+  }
+
+  .counter {
+    width: 100%;
+    margin: 2px 0 0;
+    grid-template-columns: 46px 1fr 46px;
+  }
+
+  .counter input {
+    width: 100%;
+  }
+
+  .formFooter {
+    position: relative;
+    padding-top: 23px;
+  }
+
+  .submitButton {
+    min-height: 54px;
+    border-radius: 13px;
+    font-size: 14px;
   }
 
   .successCard {
-    padding: 30px 16px 40px;
+    padding: 29px 14px 38px;
   }
 
   .ticket {
-    padding: 20px 16px;
+    padding: 19px 14px;
   }
 
   .successActions {
-    gap: 9px;
+    gap: 8px;
   }
 }
 
 @media (max-width: 360px) {
-  .eventPanel,
-  .formCard {
+  .eventPanel {
+    min-height: 236px;
     padding-inline: 14px;
   }
 
-  .categoryIcon {
-    width: 40px;
-    height: 40px;
-    flex-basis: 40px;
+  .formCard {
+    padding-inline: 13px;
   }
 
-  .programCode {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
+  .categoryIcon,
+  .attendeeIcon {
+    width: 39px;
+    height: 39px;
+    flex-basis: 39px;
   }
 
-  .programText small {
-    display: none;
+  .activityContent > small {
+    line-height: 1.4;
   }
 
   .qrFrame {
-    width: min(236px, 80vw);
+    width: min(232px, 78vw);
   }
 }
 
@@ -934,6 +1180,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .categoryCard,
+  .activityCard,
   .submitButton,
   .primaryButton,
   .spinner {

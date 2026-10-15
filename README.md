@@ -22,7 +22,9 @@ Open `http://localhost:3000/checkin`.
 
 ## Registration data
 
-The registration API assigns concurrency-safe numbers beginning at `DFC001`. The QR code contains only this registration number. BINUSIAN registrations require a 10-digit BINUSIAN ID and an `@binus.ac.id` email address; non-BINUSIAN registrations require an institution.
+The registration API assigns concurrency-safe numbers beginning at `DFC001`. The QR code contains only this registration number. BINUSIAN registrations require a 10-digit BINUSIAN ID, an `@binus.ac.id` email address, and a study program; they do not require WhatsApp. Non-BINUSIAN registrations require an institution and WhatsApp number, but no study program. Every participant selects at least one DIGIFEST CAMP 2026 activity and records how many people (1–20) will attend.
+
+`supabase/schema.sql` is also an idempotent upgrade script. If the previous schema is already installed, run the complete updated file again to add `event_interests`, `other_interest`, and `attendee_count`, and to apply the new conditional fields.
 
 The browser never receives the Supabase service-role key. Registrations are submitted to the server-only `/api/registrations` Route Handler, while Row Level Security blocks direct anonymous access to the table.
 
